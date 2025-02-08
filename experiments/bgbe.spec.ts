@@ -9,7 +9,7 @@ import bgbe, {
   isProxyableArray,
   isProxyableObject,
   resetBgbeEventLog,
-} from "./objectProxy";
+} from "./bgbe";
 
 beforeEach(() => {
   resetBgbeEventLog();

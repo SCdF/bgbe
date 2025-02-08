@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { expectType } from "tsd";
 
 import { bgbe, isBgbed } from "./objectProxy";
-import { expectType } from "tsd";
 
 // TypeScript compilation tests
 describe("TypeScript Compilation Tests", () => {
   it("should allow setting valid types", () => {
     const data = bgbe({});
     data.foo = "bar";
-    data.foo = "baz";
     expectType<string>(data.foo);
   });
 
@@ -32,7 +31,7 @@ describe("TypeScript Compilation Tests", () => {
       sing: "foo",
       num: Date.now(),
       // @ts-expect-error
-      date: new Date(), // this should fail
+      date: new Date(), // dates aren't immutable so we don't support them
     });
   });
 

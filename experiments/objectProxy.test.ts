@@ -103,3 +103,41 @@ describe("Runtime Behavior Tests", () => {
     expect(data.foo.log).toEqual([{ prop: "bar", value: "smang" }]);
   });
 });
+
+describe("bgbe wrap functionality", () => {
+  it("should wrap nested arrays", () => {
+    const data = bgbe({ array: [0, 1, 2] });
+    expect(isBgbed(data.array)).toBe(true);
+  });
+
+  it("should wrap nested objects", () => {
+    const data = bgbe({ nested: { key: "value" } });
+    expect(isBgbed(data.nested)).toBe(true);
+  });
+
+  it("should log changes in nested arrays", () => {
+    const data = bgbe({ array: [0, 1, 2] });
+    data.array[0] = 3;
+    expect(data.array.log).toEqual([{ prop: "0", value: 3 }]);
+  });
+
+  it("should log changes in nested objects", () => {
+    const data = bgbe({ nested: { key: "value" } });
+    data.nested.key = "new value";
+    expect(data.nested.log).toEqual([{ prop: "key", value: "new value" }]);
+  });
+
+  it("should handle deeply nested structures", () => {
+    const data = bgbe({ nested: { array: [0, 1, 2] } });
+    data.nested.array[1] = 4;
+    expect(data.nested.array.log).toEqual([{ prop: "1", value: 4 }]);
+  });
+
+  it("should log changes in deeply nested structures", () => {
+    const data = bgbe({ nested: { array: [0, 1, 2] } });
+    data.nested.array[1] = 4;
+    data.nested.key = "new value";
+    expect(data.nested.array.log).toEqual([{ prop: "1", value: 4 }]);
+    expect(data.nested.log).toEqual([{ prop: "key", value: "new value" }]);
+  });
+});

@@ -10,7 +10,10 @@ type ProxyableObject = {
 // Resulting outputs
 type ProxiedArray = Array<Immutable | ProxiedArray> & {
   __bgbe_proxy__: true;
+} & {
+  log: Array<{ prop: ObjectKey; value: any }>;
 };
+
 type ProxiedObject = {
   [key: ObjectKey]: Immutable | ProxiedObject | ProxiedArray;
   __bgbe_proxy__: true;
@@ -48,8 +51,15 @@ export function bgbe<
     },
   };
 
+  const wrap = (value: any) => {
+    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+      return bgbe(value);
+    }
+    return value;
+  };
+
   if (Array.isArray(obj)) {
-    const proxiedArray = [...obj] as ProxiedTarget<T>;
+    const proxiedArray = obj.map(wrap) as ProxiedArray;
     Object.defineProperty(proxiedArray, "__bgbe_proxy__", {
       value: true,
       enumerable: false,
@@ -64,6 +74,9 @@ export function bgbe<
     });
     return new Proxy(proxiedArray, handler);
   } else {
-    return new Proxy({ ...obj, __bgbe_proxy__: true, log }, handler);
+    const proxiedObject = Object.fromEntries(
+      Object.entries(obj).map(([key, value]) => [key, wrap(value)])
+    ) as ProxiedObject;
+    return new Proxy({ ...proxiedObject, __bgbe_proxy__: true, log }, handler);
   }
 }

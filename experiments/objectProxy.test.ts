@@ -110,9 +110,15 @@ describe("Runtime Behavior Tests", () => {
     const data = bgbe({}) as any;
     data.foo = {};
     data.foo.bar = "smang";
+    data.bar = [];
+    data.bar[0] = "smang";
+    data.bar.push("smong");
     expect(bgbeEventLog).toEqual([
       { objKey: "global", prop: "foo", value: expect.any(Object) },
       { objKey: "global.foo", prop: "bar", value: "smang" },
+      { objKey: "global", prop: "bar", value: expect.any(Array) },
+      { objKey: "global.bar", prop: "0", value: "smang" },
+      { objKey: "global.bar", prop: "1", value: "smong" },
     ]);
   });
 });

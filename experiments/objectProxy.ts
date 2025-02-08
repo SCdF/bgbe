@@ -25,7 +25,6 @@ export function isBgbed(obj: any): obj is ProxiedObject {
 type ProxiedTarget<T> = T & ProxiedObject;
 
 // TODO:
-// - support arrays at the top level
 // - support bgbe(id, obj), in case you want multiple per domain/url
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves

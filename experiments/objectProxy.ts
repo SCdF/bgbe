@@ -14,6 +14,8 @@ type ProxiedArray = Array<Immutable | ProxiedArray> & {
 type ProxiedObject = {
   [key: ObjectKey]: Immutable | ProxiedObject | ProxiedArray;
   __bgbe_proxy__: true;
+} & {
+  log: Array<{ prop: ObjectKey; value: any }>;
 };
 
 export function isBgbed(obj: any): obj is ProxiedObject {
@@ -32,50 +34,21 @@ export function bgbe<T extends ProxyableObject = ProxyableObject>(
   obj: T
 ): ProxiedTarget<T> {
   // TODO inversely recurse to create proxied objects
-  return new Proxy({ ...obj, __bgbe_proxy__: true } as ProxiedTarget<T>, {
+  const log: Array<{ prop: ObjectKey; value: any }> = [];
+  return new Proxy({ ...obj, __bgbe_proxy__: true, log } as ProxiedTarget<T>, {
     get(target, prop, receiver) {
       if (typeof prop === "symbol") {
         throw Error("no symbols!");
       }
-      console.log(`GET target.${prop}`);
       return target[prop];
     },
     set(target, prop, value): boolean {
       if (typeof prop === "symbol") {
         throw Error("no symbols!");
       }
-      console.log(`SET target.${String(prop)}`);
       (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
+      target.log.push({ prop, value });
       return true;
     },
   });
 }
-
-// // ****Basic recursiveness****
-// const data = bgbe({});
-// data.foo = "bar";
-// data.foo = "baz";
-// console.log(data.foo);
-
-// // this fails at the type stage
-// data.foo = {};
-// data.foo.bar = "smang";
-
-// // this succeeds
-// data.foo = bgbe({});
-// data.foo.bar = "smang";
-
-// // *****Only certain types****
-// const bar = bgbe({
-//   sing: "foo",
-//   num: Date.now(),
-//   date: new Date(), // TODO: this should fail
-// });
-
-// // ****ARRAYS****
-// // raw arrays don't work (yet?)
-// const arrays = bgbe([0, 1, 2, 3]);
-// // but this does
-// type MyArrayData = { data: number[] };
-// const arrays2 = bgbe({ data: [0, 1, 2, 3] });
-// arrays2.data.push(4);

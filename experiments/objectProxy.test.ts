@@ -70,4 +70,22 @@ describe("Runtime Behavior Tests", () => {
     arrays2.data.push(4);
     expect(arrays2.data).toContain(4);
   });
+
+  it("should log every value that gets set", () => {
+    const data = bgbe({});
+    data.foo = "bar";
+    data.foo = "baz";
+    expect(data.log).toEqual([
+      { prop: "foo", value: "bar" },
+      { prop: "foo", value: "baz" },
+    ]);
+  });
+
+  it("should log nested proxy values", () => {
+    const data = bgbe({});
+    data.foo = bgbe({});
+    data.foo.bar = "smang";
+    expect(data.log).toEqual([{ prop: "foo", value: expect.any(Object) }]);
+    expect(data.foo.log).toEqual([{ prop: "bar", value: "smang" }]);
+  });
 });

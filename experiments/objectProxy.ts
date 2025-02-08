@@ -54,31 +54,31 @@ export function bgbe<T extends ProxyableObject = ProxyableObject>(
   });
 }
 
-// ****Basic recursiveness****
-const data = bgbe({});
-data.foo = "bar";
-data.foo = "baz";
-console.log(data.foo);
+// // ****Basic recursiveness****
+// const data = bgbe({});
+// data.foo = "bar";
+// data.foo = "baz";
+// console.log(data.foo);
 
-// this fails at the type stage
-data.foo = {};
-data.foo.bar = "smang";
+// // this fails at the type stage
+// data.foo = {};
+// data.foo.bar = "smang";
 
-// this succeeds
-data.foo = bgbe({});
-data.foo.bar = "smang";
+// // this succeeds
+// data.foo = bgbe({});
+// data.foo.bar = "smang";
 
-// *****Only certain types****
-const bar = bgbe({
-  sing: "foo",
-  num: Date.now(),
-  date: new Date(), // TODO: this should fail
-});
+// // *****Only certain types****
+// const bar = bgbe({
+//   sing: "foo",
+//   num: Date.now(),
+//   date: new Date(), // TODO: this should fail
+// });
 
-// ****ARRAYS****
-// raw arrays don't work (yet?)
-const arrays = bgbe([0, 1, 2, 3]);
-// but this does
-type MyArrayData = { data: number[] };
-const arrays2 = bgbe<MyArrayData>({ data: [0, 1, 2, 3] });
-arrays2.data.push(4);
+// // ****ARRAYS****
+// // raw arrays don't work (yet?)
+// const arrays = bgbe([0, 1, 2, 3]);
+// // but this does
+// type MyArrayData = { data: number[] };
+// const arrays2 = bgbe({ data: [0, 1, 2, 3] });
+// arrays2.data.push(4);

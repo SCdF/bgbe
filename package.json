@@ -1,0 +1,14 @@
+{
+  "name": "bgbe",
+  "version": "0.0.1",
+  "scripts": {
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "tsd": "^0.31.2",
+    "vitest": "^3.0.5"
+  },
+  "dependencies": {
+    "yjs": "^13.6.23"
+  }
+}

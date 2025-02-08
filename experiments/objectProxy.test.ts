@@ -152,6 +152,33 @@ describe("Runtime Behavior Tests", () => {
       data.foo = new Date();
     }).toThrowError();
   });
+
+  it('should support setting "null" as a value', () => {
+    const data = bgbe({}) as any;
+    data.foo = null;
+    expect(data.foo).toBe(null);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "foo", value: null },
+    ]);
+  });
+
+  it("should support setting undefined as a value", () => {
+    const data = bgbe({}) as any;
+    data.foo = undefined;
+    expect(data.foo).toBe(undefined);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "foo", value: undefined },
+    ]);
+  });
+
+  it("should support deleting a property", () => {
+    const data = bgbe({ foo: "bar" }) as any;
+    delete data.foo;
+    expect(data.foo).toBe(undefined);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "foo", value: undefined },
+    ]);
+  });
 });
 
 describe("runtime type checking", () => {

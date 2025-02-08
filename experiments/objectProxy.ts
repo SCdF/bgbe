@@ -1,5 +1,5 @@
 type ObjectKey = string | number;
-type Immutable = string | number | boolean;
+type Immutable = string | number | boolean | null | undefined;
 
 // Acceptable inputs
 type ProxyableArray = Array<Immutable | ProxyableArray>;
@@ -25,16 +25,19 @@ export function isImmutable(obj: any): obj is Immutable {
   return (
     typeof obj === "string" ||
     typeof obj === "number" ||
-    typeof obj === "boolean"
+    typeof obj === "boolean" ||
+    obj === null ||
+    obj === undefined
   );
 }
 
 export function isProxyableArray(obj: any): obj is ProxyableArray {
-  return Array.isArray(obj) && obj.every(isValidValue);
+  return obj && Array.isArray(obj) && obj.every(isValidValue);
 }
 
 export function isProxyableObject(obj: any): obj is ProxyableObject {
   return (
+    obj &&
     Object.getPrototypeOf(obj) === Object.prototype &&
     Object.keys(obj).every(isObjectKey) &&
     Object.values(obj).every(isValidValue)
@@ -102,6 +105,12 @@ export default function bgbe<
         bgbeEventLog.push({ objKey, prop, value });
       }
 
+      return true;
+    },
+    // TODO: think about this: do we want to set to undefined, or a specific deletion?
+    deleteProperty(target, prop) {
+      delete target[prop];
+      bgbeEventLog.push({ objKey, prop, value: undefined });
       return true;
     },
   };

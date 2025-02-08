@@ -39,6 +39,18 @@ describe("TypeScript Compilation Tests", () => {
     });
   });
 
+  it(`shouldn't support setting unsupported values`, () => {
+    const data = bgbe({});
+    // @ts-expect-error
+    data.foo = new Date();
+  });
+
+  it(`shouldn't support setting unsupported values, recursively`, () => {
+    const data = bgbe({ foo: { bar: "ok" } });
+    // @ts-expect-error
+    data.foo.bar = new Date();
+  });
+
   it("should support arrays", () => {
     const arrays = bgbe([1, 2, 3]);
     arrays.push(4);
@@ -120,6 +132,11 @@ describe("Runtime Behavior Tests", () => {
       { objKey: "global.bar", prop: "0", value: "smang" },
       { objKey: "global.bar", prop: "1", value: "smong" },
     ]);
+  });
+
+  it("should runtime protect against setting unsupported values", () => {
+    const data = bgbe({}) as any;
+    expect(() => (data.foo = new Date())).toThrowError();
   });
 });
 

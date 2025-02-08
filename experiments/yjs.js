@@ -40,3 +40,4 @@ ymap.set("keyA", "valueA");
 const foo = {};
 ymap.set("keyB", foo);
 foo.bar = "smang";
+ymap.get("keyB").bar = "smang2";

@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { expectType } from "tsd";
 
-import { bgbe, isBgbed } from "./objectProxy";
+import { bgbe, bgbeEventLog, isBgbed, resetBgbeEventLog } from "./objectProxy";
+
+beforeEach(() => {
+  resetBgbeEventLog();
+});
 
 // TypeScript compilation tests
 describe("TypeScript Compilation Tests", () => {
@@ -27,12 +31,19 @@ describe("TypeScript Compilation Tests", () => {
   });
 
   it("should fail for unsupported types", () => {
+    // @ts-expect-error
     const bar = bgbe({
       sing: "foo",
       num: Date.now(),
-      // @ts-expect-error
       date: new Date(), // dates aren't immutable so we don't support them
     });
+  });
+
+  it("should support arrays", () => {
+    const arrays = bgbe([1, 2, 3]);
+    arrays.push(4);
+    arrays[0] = 5;
+    expectType<number[]>(arrays);
   });
 
   it("should support arrays within objects", () => {
@@ -79,9 +90,9 @@ describe("Runtime Behavior Tests", () => {
     arrays[0] = 5;
     expect(arrays[0]).toBe(5);
 
-    expect(arrays.log).toEqual([
-      { prop: "3", value: 4 },
-      { prop: "0", value: 5 },
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "3", value: 4 },
+      { objKey: "global", prop: "0", value: 5 },
     ]);
   });
 
@@ -89,9 +100,9 @@ describe("Runtime Behavior Tests", () => {
     const data = bgbe({});
     data.foo = "bar";
     data.foo = "baz";
-    expect(data.log).toEqual([
-      { prop: "foo", value: "bar" },
-      { prop: "foo", value: "baz" },
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "foo", value: "bar" },
+      { objKey: "global", prop: "foo", value: "baz" },
     ]);
   });
 
@@ -99,8 +110,10 @@ describe("Runtime Behavior Tests", () => {
     const data = bgbe({});
     data.foo = bgbe({});
     data.foo.bar = "smang";
-    expect(data.log).toEqual([{ prop: "foo", value: expect.any(Object) }]);
-    expect(data.foo.log).toEqual([{ prop: "bar", value: "smang" }]);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "foo", value: expect.any(Object) },
+      { objKey: "global.foo", prop: "bar", value: "smang" },
+    ]);
   });
 });
 
@@ -118,26 +131,34 @@ describe("bgbe wrap functionality", () => {
   it("should log changes in nested arrays", () => {
     const data = bgbe({ array: [0, 1, 2] });
     data.array[0] = 3;
-    expect(data.array.log).toEqual([{ prop: "0", value: 3 }]);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global.array", prop: "0", value: 3 },
+    ]);
   });
 
   it("should log changes in nested objects", () => {
     const data = bgbe({ nested: { key: "value" } });
     data.nested.key = "new value";
-    expect(data.nested.log).toEqual([{ prop: "key", value: "new value" }]);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global.nested", prop: "key", value: "new value" },
+    ]);
   });
 
   it("should handle deeply nested structures", () => {
     const data = bgbe({ nested: { array: [0, 1, 2] } });
     data.nested.array[1] = 4;
-    expect(data.nested.array.log).toEqual([{ prop: "1", value: 4 }]);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global.nested.array", prop: "1", value: 4 },
+    ]);
   });
 
   it("should log changes in deeply nested structures", () => {
-    const data = bgbe({ nested: { array: [0, 1, 2] } });
+    const data = bgbe({ nested: { array: [0, 1, 2], key: "value" } });
     data.nested.array[1] = 4;
     data.nested.key = "new value";
-    expect(data.nested.array.log).toEqual([{ prop: "1", value: 4 }]);
-    expect(data.nested.log).toEqual([{ prop: "key", value: "new value" }]);
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global.nested.array", prop: "1", value: 4 },
+      { objKey: "global.nested", prop: "key", value: "new value" },
+    ]);
   });
 });

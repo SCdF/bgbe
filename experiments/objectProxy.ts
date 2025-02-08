@@ -21,11 +21,21 @@ type ProxiedObject = {
   log: Array<{ prop: ObjectKey; value: any }>;
 };
 
+type ProxiedTarget<T> = T & ProxiedObject;
+
 export function isBgbed(obj: any): obj is ProxiedObject {
   return obj && obj.__bgbe_proxy__;
 }
 
-type ProxiedTarget<T> = T & ProxiedObject;
+export let bgbeEventLog: Array<{
+  objKey: string;
+  prop: ObjectKey;
+  value: any;
+}> = [];
+
+export function resetBgbeEventLog() {
+  bgbeEventLog = [];
+}
 
 // TODO:
 // - support bgbe(id, obj), in case you want multiple per domain/url
@@ -34,8 +44,17 @@ type ProxiedTarget<T> = T & ProxiedObject;
 // - check types in realtime on set
 export function bgbe<
   T extends ProxyableObject | ProxyableArray = ProxyableObject
->(obj: T): ProxiedTarget<T> {
-  const log: Array<{ prop: ObjectKey; value: any }> = [];
+>(keyOrObj: string | T, obj?: T): ProxiedTarget<T> {
+  let objKey: string = "global";
+  if (typeof keyOrObj === "string") {
+    objKey = keyOrObj;
+    if (!obj) {
+      throw new Error("Object must be provided when key is specified");
+    }
+  } else {
+    obj = keyOrObj;
+  }
+
   const handler = {
     get(target, prop, receiver) {
       return target[prop];
@@ -44,30 +63,26 @@ export function bgbe<
       (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
-        target.log.push({ prop, value });
+        bgbeEventLog.push({ objKey, prop, value });
       }
 
       return true;
     },
   };
 
-  const wrap = (value: any) => {
+  const wrap = (key: string, value: any) => {
     if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
-      return bgbe(value);
+      return bgbe(key, value);
     }
     return value;
   };
 
   if (Array.isArray(obj)) {
-    const proxiedArray = obj.map(wrap) as ProxiedArray;
+    const proxiedArray = obj.map((value, index) =>
+      wrap(`${objKey}.${index}`, value)
+    ) as ProxiedArray;
     Object.defineProperty(proxiedArray, "__bgbe_proxy__", {
       value: true,
-      enumerable: false,
-      configurable: false,
-      writable: false,
-    });
-    Object.defineProperty(proxiedArray, "log", {
-      value: log,
       enumerable: false,
       configurable: false,
       writable: false,
@@ -75,8 +90,11 @@ export function bgbe<
     return new Proxy(proxiedArray, handler);
   } else {
     const proxiedObject = Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [key, wrap(value)])
+      Object.entries(obj).map(([key, value]) => [
+        key,
+        wrap(`${objKey}.${key}`, value),
+      ])
     ) as ProxiedObject;
-    return new Proxy({ ...proxiedObject, __bgbe_proxy__: true, log }, handler);
+    return new Proxy({ ...proxiedObject, __bgbe_proxy__: true }, handler);
   }
 }

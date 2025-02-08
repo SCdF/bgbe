@@ -38,7 +38,6 @@ export function resetBgbeEventLog() {
 }
 
 // TODO:
-// - support bgbe(id, obj), in case you want multiple per domain/url
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
 // - check types in realtime on set
@@ -55,12 +54,22 @@ export function bgbe<
     obj = keyOrObj;
   }
 
+  const wrap = (key: string, value: any) => {
+    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+      return bgbe(key, value);
+    }
+    return value;
+  };
+
   const handler = {
     get(target, prop, receiver) {
       return target[prop];
     },
     set(target, prop, value): boolean {
-      (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
+      (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = wrap(
+        `${objKey}.${prop}`,
+        value
+      );
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
         bgbeEventLog.push({ objKey, prop, value });
@@ -68,13 +77,6 @@ export function bgbe<
 
       return true;
     },
-  };
-
-  const wrap = (key: string, value: any) => {
-    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
-      return bgbe(key, value);
-    }
-    return value;
   };
 
   if (Array.isArray(obj)) {

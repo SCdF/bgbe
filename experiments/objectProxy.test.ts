@@ -107,8 +107,8 @@ describe("Runtime Behavior Tests", () => {
   });
 
   it("should log nested proxy values", () => {
-    const data = bgbe({});
-    data.foo = bgbe({});
+    const data = bgbe({}) as any;
+    data.foo = {};
     data.foo.bar = "smang";
     expect(bgbeEventLog).toEqual([
       { objKey: "global", prop: "foo", value: expect.any(Object) },

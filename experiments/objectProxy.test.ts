@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { expectType } from "tsd";
 
-import bgbe, { bgbeEventLog, isBgbed, resetBgbeEventLog } from "./objectProxy";
+import bgbe, {
+  bgbeEventLog,
+  isBgbed,
+  isImmutable,
+  isObjectKey,
+  isProxyableArray,
+  isProxyableObject,
+  resetBgbeEventLog,
+} from "./objectProxy";
 
 beforeEach(() => {
   resetBgbeEventLog();
@@ -41,14 +49,18 @@ describe("TypeScript Compilation Tests", () => {
 
   it(`shouldn't support setting unsupported values`, () => {
     const data = bgbe({});
-    // @ts-expect-error
-    data.foo = new Date();
+    try {
+      // @ts-expect-error
+      data.foo = new Date();
+    } catch (err) {}
   });
 
   it(`shouldn't support setting unsupported values, recursively`, () => {
     const data = bgbe({ foo: { bar: "ok" } });
-    // @ts-expect-error
-    data.foo.bar = new Date();
+    try {
+      // @ts-expect-error
+      data.foo.bar = new Date();
+    } catch (err) {}
   });
 
   it("should support arrays", () => {
@@ -136,7 +148,73 @@ describe("Runtime Behavior Tests", () => {
 
   it("should runtime protect against setting unsupported values", () => {
     const data = bgbe({}) as any;
-    expect(() => (data.foo = new Date())).toThrowError();
+    expect(() => {
+      data.foo = new Date();
+    }).toThrowError();
+  });
+});
+
+describe("runtime type checking", () => {
+  describe("isObjectKey", () => {
+    it("should return true for strings", () => {
+      expect(isObjectKey("foo")).toBe(true);
+    });
+
+    it("should return true for numbers", () => {
+      expect(isObjectKey(0)).toBe(true);
+    });
+
+    it("should return false for other types", () => {
+      expect(isObjectKey({})).toBe(false);
+    });
+  });
+  describe("isImmutable", () => {
+    it("should return true for strings", () => {
+      expect(isImmutable("foo")).toBe(true);
+    });
+
+    it("should return true for numbers", () => {
+      expect(isImmutable(0)).toBe(true);
+    });
+
+    it("should return true for booleans", () => {
+      expect(isImmutable(true)).toBe(true);
+    });
+
+    it("should return false for other types", () => {
+      expect(isImmutable({})).toBe(false);
+      expect(isImmutable(new Date())).toBe(false);
+    });
+  });
+  describe("isProxyableArray", () => {
+    it("should return true for arrays of valid values", () => {
+      expect(isProxyableArray([0, 1, 2])).toBe(true);
+    });
+
+    it("should return true for arrays with recursively alid values", () => {
+      expect(isProxyableArray([0, 1, {}])).toBe(true);
+    });
+
+    it("should return false for non-arrays", () => {
+      expect(isProxyableArray({})).toBe(false);
+    });
+  });
+  describe("isProxyableObject", () => {
+    it("should return true for objects with valid keys and values", () => {
+      expect(isProxyableObject({ foo: "bar" })).toBe(true);
+    });
+
+    it("should return true for objects with recursively valid keys and values", () => {
+      expect(isProxyableObject({ foo: "bar", baz: {} })).toBe(true);
+    });
+
+    it("should return false for non-objects", () => {
+      expect(isProxyableObject([])).toBe(false);
+    });
+
+    it("should return false for objects with invalid values", () => {
+      expect(isProxyableObject({ foo: new Date() })).toBe(false);
+    });
   });
 });
 

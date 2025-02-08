@@ -17,6 +17,36 @@ type ProxiedObject = {
 };
 type ProxiedTarget<T> = T & ProxiedObject;
 
+export function isObjectKey(key: any): key is ObjectKey {
+  return typeof key === "string" || typeof key === "number";
+}
+
+export function isImmutable(obj: any): obj is Immutable {
+  return (
+    typeof obj === "string" ||
+    typeof obj === "number" ||
+    typeof obj === "boolean"
+  );
+}
+
+export function isProxyableArray(obj: any): obj is ProxyableArray {
+  return Array.isArray(obj) && obj.every(isValidValue);
+}
+
+export function isProxyableObject(obj: any): obj is ProxyableObject {
+  return (
+    Object.getPrototypeOf(obj) === Object.prototype &&
+    Object.keys(obj).every(isObjectKey) &&
+    Object.values(obj).every(isValidValue)
+  );
+}
+
+export function isValidValue(value: any): boolean {
+  return (
+    isImmutable(value) || isProxyableArray(value) || isProxyableObject(value)
+  );
+}
+
 export function isBgbed(obj: any): obj is ProxiedObject {
   return obj?.__bgbe_proxy__;
 }
@@ -60,6 +90,10 @@ export default function bgbe<
       return target[prop];
     },
     set(target, prop, value): boolean {
+      if (!isValidValue(value)) {
+        throw new Error(`Invalid value type for property ${String(prop)}`);
+      }
+
       (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = wrap(
         `${objKey}.${prop}`,
         value

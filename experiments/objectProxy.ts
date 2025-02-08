@@ -10,17 +10,11 @@ type ProxyableObject = {
 // Resulting outputs
 type ProxiedArray = Array<Immutable | ProxiedArray> & {
   __bgbe_proxy__: true;
-} & {
-  log: Array<{ prop: ObjectKey; value: any }>;
 };
-
 type ProxiedObject = {
   [key: ObjectKey]: Immutable | ProxiedObject | ProxiedArray;
   __bgbe_proxy__: true;
-} & {
-  log: Array<{ prop: ObjectKey; value: any }>;
 };
-
 type ProxiedTarget<T> = T & ProxiedObject;
 
 export function isBgbed(obj: any): obj is ProxiedObject {

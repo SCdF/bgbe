@@ -36,15 +36,9 @@ export function bgbe<
   const log: Array<{ prop: ObjectKey; value: any }> = [];
   const handler = {
     get(target, prop, receiver) {
-      // if (typeof prop === "symbol") {
-      //   throw Error("no symbols!");
-      // }
       return target[prop];
     },
     set(target, prop, value): boolean {
-      if (typeof prop === "symbol") {
-        throw Error("no symbols!");
-      }
       (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
       target.log.push({ prop, value });
       return true;

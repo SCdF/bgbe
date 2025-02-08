@@ -40,7 +40,11 @@ export function bgbe<
     },
     set(target, prop, value): boolean {
       (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
-      target.log.push({ prop, value });
+
+      if (!Array.isArray(target) || !isNaN(Number(prop))) {
+        target.log.push({ prop, value });
+      }
+
       return true;
     },
   };

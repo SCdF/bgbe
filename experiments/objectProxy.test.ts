@@ -75,8 +75,14 @@ describe("Runtime Behavior Tests", () => {
     const arrays = bgbe([1, 2, 3]);
     arrays.push(4);
     expect(arrays).toContain(4);
+
     arrays[0] = 5;
     expect(arrays[0]).toBe(5);
+
+    expect(arrays.log).toEqual([
+      { prop: "3", value: 4 },
+      { prop: "0", value: 5 },
+    ]);
   });
 
   it("should log every value that gets set", () => {

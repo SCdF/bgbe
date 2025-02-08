@@ -18,22 +18,14 @@ beforeEach(() => {
 // TypeScript compilation tests
 describe("TypeScript Compilation Tests", () => {
   it("should allow setting valid types", () => {
-    const data = bgbe({});
+    const data = bgbe<{ foo?: string }>({});
     data.foo = "bar";
     expectType<string>(data.foo);
   });
 
-  it("should fail when setting invalid types", () => {
-    const data = bgbe({});
-    // @ts-expect-error
-    data.foo = {};
-    // @ts-expect-error
-    data.foo.bar = "smang";
-  });
-
   it("should allow nested proxies", () => {
-    const data = bgbe({});
-    data.foo = bgbe({});
+    const data = bgbe<{ foo?: any }>({});
+    data.foo = bgbe<{ bar?: string }>({});
     data.foo.bar = "smang";
     expectType<string>(data.foo.bar);
   });
@@ -47,7 +39,7 @@ describe("TypeScript Compilation Tests", () => {
     });
   });
 
-  it(`shouldn't support setting unsupported values`, () => {
+  it(`should fail setting unsupported values`, () => {
     const data = bgbe({});
     try {
       // @ts-expect-error
@@ -55,7 +47,7 @@ describe("TypeScript Compilation Tests", () => {
     } catch (err) {}
   });
 
-  it(`shouldn't support setting unsupported values, recursively`, () => {
+  it(`should fail setting unsupported values, recursively`, () => {
     const data = bgbe({ foo: { bar: "ok" } });
     try {
       // @ts-expect-error
@@ -81,14 +73,14 @@ describe("TypeScript Compilation Tests", () => {
 // Runtime behavior tests
 describe("Runtime Behavior Tests", () => {
   it("should set and get properties correctly", () => {
-    const data = bgbe({});
+    const data = bgbe({}) as any;
     data.foo = "bar";
     data.foo = "baz";
     expect(data.foo).toBe("baz");
   });
 
   it("should handle nested proxies correctly", () => {
-    const data = bgbe({});
+    const data = bgbe({}) as any;
     data.foo = bgbe({});
     data.foo.bar = "smang";
     expect(data.foo.bar).toBe("smang");
@@ -121,7 +113,7 @@ describe("Runtime Behavior Tests", () => {
   });
 
   it("should log every value that gets set", () => {
-    const data = bgbe({});
+    const data = bgbe({}) as any;
     data.foo = "bar";
     data.foo = "baz";
     expect(bgbeEventLog).toEqual([

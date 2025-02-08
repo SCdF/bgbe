@@ -15,7 +15,7 @@ type ProxiedObject = {
   [key: ObjectKey]: Immutable | ProxiedObject | ProxiedArray;
   __bgbe_proxy__: true;
 };
-type ProxiedTarget<T> = T & ProxiedObject;
+type ProxiedTarget<T> = T & (ProxiedObject | ProxiedArray);
 
 export function isObjectKey(key: any): key is ObjectKey {
   return typeof key === "string" || typeof key === "number";

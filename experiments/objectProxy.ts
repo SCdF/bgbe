@@ -35,7 +35,7 @@ export function resetBgbeEventLog() {
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
 // - check types in realtime on set
-export function bgbe<
+export default function bgbe<
   T extends ProxyableObject | ProxyableArray = ProxyableObject
 >(keyOrObj: string | T, obj?: T): ProxiedTarget<T> {
   let objKey: string = "global";

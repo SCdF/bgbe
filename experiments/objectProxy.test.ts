@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { expectType } from "tsd";
 
-import { bgbe, bgbeEventLog, isBgbed, resetBgbeEventLog } from "./objectProxy";
+import bgbe, { bgbeEventLog, isBgbed, resetBgbeEventLog } from "./objectProxy";
 
 beforeEach(() => {
   resetBgbeEventLog();

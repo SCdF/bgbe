@@ -71,6 +71,14 @@ describe("Runtime Behavior Tests", () => {
     expect(arrays2.data).toContain(4);
   });
 
+  it("should support arrays", () => {
+    const arrays = bgbe([1, 2, 3]);
+    arrays.push(4);
+    expect(arrays).toContain(4);
+    arrays[0] = 5;
+    expect(arrays[0]).toBe(5);
+  });
+
   it("should log every value that gets set", () => {
     const data = bgbe({});
     data.foo = "bar";

@@ -30,16 +30,15 @@ type ProxiedTarget<T> = T & ProxiedObject;
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
 // - check types in realtime on set
-export function bgbe<T extends ProxyableObject = ProxyableObject>(
-  obj: T
-): ProxiedTarget<T> {
-  // TODO inversely recurse to create proxied objects
+export function bgbe<
+  T extends ProxyableObject | ProxyableArray = ProxyableObject
+>(obj: T): ProxiedTarget<T> {
   const log: Array<{ prop: ObjectKey; value: any }> = [];
-  return new Proxy({ ...obj, __bgbe_proxy__: true, log } as ProxiedTarget<T>, {
+  const handler = {
     get(target, prop, receiver) {
-      if (typeof prop === "symbol") {
-        throw Error("no symbols!");
-      }
+      // if (typeof prop === "symbol") {
+      //   throw Error("no symbols!");
+      // }
       return target[prop];
     },
     set(target, prop, value): boolean {
@@ -50,5 +49,24 @@ export function bgbe<T extends ProxyableObject = ProxyableObject>(
       target.log.push({ prop, value });
       return true;
     },
-  });
+  };
+
+  if (Array.isArray(obj)) {
+    const proxiedArray = [...obj] as ProxiedTarget<T>;
+    Object.defineProperty(proxiedArray, "__bgbe_proxy__", {
+      value: true,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    Object.defineProperty(proxiedArray, "log", {
+      value: log,
+      enumerable: false,
+      configurable: false,
+      writable: false,
+    });
+    return new Proxy(proxiedArray, handler);
+  } else {
+    return new Proxy({ ...obj, __bgbe_proxy__: true, log }, handler);
+  }
 }

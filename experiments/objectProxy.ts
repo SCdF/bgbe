@@ -45,11 +45,8 @@ export function bgbe<T extends ProxyableObject = ProxyableObject>(
         throw Error("no symbols!");
       }
       console.log(`SET target.${String(prop)}`);
-      if (prop in target) {
-        (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
-        return true;
-      }
-      return false;
+      (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = value;
+      return true;
     },
   });
 }

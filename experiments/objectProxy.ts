@@ -18,7 +18,7 @@ type ProxiedObject = {
 type ProxiedTarget<T> = T & ProxiedObject;
 
 export function isBgbed(obj: any): obj is ProxiedObject {
-  return obj && obj.__bgbe_proxy__;
+  return obj?.__bgbe_proxy__;
 }
 
 export let bgbeEventLog: Array<{
@@ -56,7 +56,7 @@ export function bgbe<
   };
 
   const handler = {
-    get(target, prop, receiver) {
+    get(target, prop) {
       return target[prop];
     },
     set(target, prop, value): boolean {

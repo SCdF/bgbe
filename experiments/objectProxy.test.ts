@@ -179,6 +179,18 @@ describe("Runtime Behavior Tests", () => {
       { objKey: "global", prop: "foo", value: undefined },
     ]);
   });
+
+  it("should support passing a specific key", () => {
+    const data = bgbe("myKey", { foo: "bar" }) as any;
+    data.foo = "baz";
+    data.bar = {};
+    data.bar.baz = "smang";
+    expect(bgbeEventLog).toEqual([
+      { objKey: "myKey", prop: "foo", value: "baz" },
+      { objKey: "myKey", prop: "bar", value: expect.any(Object) },
+      { objKey: "myKey.bar", prop: "baz", value: "smang" },
+    ]);
+  });
 });
 
 describe("runtime type checking", () => {

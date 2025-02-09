@@ -293,4 +293,15 @@ describe("bgbe wrap functionality", () => {
       { objKey: "global.nested", prop: "key", value: "new value" },
     ]);
   });
+
+  it(`shouldn't override existing wrapped objects`, () => {
+    const data = bgbe({}) as any;
+    const otherData = bgbe("other", { foo: "bar" });
+    data.other = otherData;
+    data.other.foo = "baz";
+    expect(bgbeEventLog).toEqual([
+      { objKey: "global", prop: "other", value: expect.any(Object) },
+      { objKey: "other", prop: "foo", value: "baz" },
+    ]);
+  });
 });

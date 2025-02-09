@@ -81,10 +81,10 @@ export default function bgbe<
   }
 
   const wrap = (key: string, value: any) => {
-    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
-      return bgbe(key, value);
+    if (isBgbed(value) || isImmutable(value)) {
+      return value;
     }
-    return value;
+    return bgbe(key, value);
   };
 
   const handler = {

@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1739121738678,
+  "lastUpdate": 1739131449795,
   "repoUrl": "https://github.com/SCdF/bgbe",
   "entries": {
     "Benchmark": [
@@ -240,6 +240,86 @@ window.BENCHMARK_DATA = {
             "range": "±1.08%",
             "unit": "ops/sec",
             "extra": "94 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "stefan@sdufresne.info",
+            "name": "Stefan du Fresne",
+            "username": "SCdF"
+          },
+          "committer": {
+            "email": "stefan@sdufresne.info",
+            "name": "Stefan du Fresne",
+            "username": "SCdF"
+          },
+          "distinct": true,
+          "id": "1bf7fb6e61322ab0c4225a3a228fbf76005de0f6",
+          "message": "pull some stuff out",
+          "timestamp": "2025-02-09T20:03:01Z",
+          "tree_id": "da6240ce62c6e7bb0b5bdfdd9d74870e6d44243c",
+          "url": "https://github.com/SCdF/bgbe/commit/1bf7fb6e61322ab0c4225a3a228fbf76005de0f6"
+        },
+        "date": 1739131449514,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "Create Minimal Object - raw",
+            "value": 140975540,
+            "range": "±3.70%",
+            "unit": "ops/sec",
+            "extra": "82 samples"
+          },
+          {
+            "name": "Create Minimal Object - bgbe",
+            "value": 12034725,
+            "range": "±1.33%",
+            "unit": "ops/sec",
+            "extra": "84 samples"
+          },
+          {
+            "name": "Create Large Object - raw",
+            "value": 9665,
+            "range": "±0.42%",
+            "unit": "ops/sec",
+            "extra": "97 samples"
+          },
+          {
+            "name": "Create Large Object - bgbe",
+            "value": 4986,
+            "range": "±0.64%",
+            "unit": "ops/sec",
+            "extra": "92 samples"
+          },
+          {
+            "name": "Set Values (Large Object) - raw",
+            "value": 80397368,
+            "range": "±3.10%",
+            "unit": "ops/sec",
+            "extra": "86 samples"
+          },
+          {
+            "name": "Set Values (Large Object) - bgbe",
+            "value": 7080182,
+            "range": "±57.68%",
+            "unit": "ops/sec",
+            "extra": "60 samples"
+          },
+          {
+            "name": "Get Values (Large Object) - raw",
+            "value": 80948674,
+            "range": "±2.97%",
+            "unit": "ops/sec",
+            "extra": "84 samples"
+          },
+          {
+            "name": "Get Values (Large Object) - bgbe",
+            "value": 24944335,
+            "range": "±2.06%",
+            "unit": "ops/sec",
+            "extra": "89 samples"
           }
         ]
       }

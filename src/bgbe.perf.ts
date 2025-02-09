@@ -33,7 +33,7 @@ function getValues(obj: any) {
   }
 }
 
-const iterations = 1000;
+const iterations = 5000;
 
 const rawMinimalObject = createMinimalObject();
 const rawLargeObject = createLargeObject();

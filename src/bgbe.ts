@@ -2,12 +2,12 @@ type ObjectKey = string | number | symbol;
 type Immutable = ObjectKey | boolean | null | undefined;
 
 // Acceptable inputs
-type Proxyable =
-  | (Immutable | Proxyable)[]
-  | { [key: ObjectKey]: Immutable | Proxyable };
+type ProxyableComposite =
+  | (Immutable | ProxyableComposite)[]
+  | { [key: ObjectKey]: Immutable | ProxyableComposite };
 
 // Resulting outputs
-type Proxied = Proxyable & { __bgbe_proxy__: true };
+type ProxiedComposite = ProxyableComposite & { __bgbe_proxy__: true };
 
 export function isObjectKey(key: any): key is ObjectKey {
   return typeof key === "string" || typeof key === "number";
@@ -24,25 +24,25 @@ export function isImmutable(obj: any): obj is Immutable {
   );
 }
 
-export function isProxyable(obj: any): obj is Proxyable {
+export function isProxyableComposite(obj: any): obj is ProxyableComposite {
   if (isImmutable(obj)) {
     return true;
   }
   if (Array.isArray(obj)) {
-    return obj.every(isProxyable);
+    return obj.every(isProxyableComposite);
   }
   if (typeof obj === "object" && obj !== null) {
     return (
       obj &&
       Object.getPrototypeOf(obj) === Object.prototype &&
       Object.keys(obj).every(isObjectKey) &&
-      Object.values(obj).every(isProxyable)
+      Object.values(obj).every(isProxyableComposite)
     );
   }
   return false;
 }
 
-export function isBgbed(obj: any): obj is Proxied {
+export function isProxiedComposite(obj: any): obj is ProxiedComposite {
   return obj?.__bgbe_proxy__;
 }
 
@@ -57,7 +57,7 @@ export function resetBgbeEventLog() {
 }
 
 function wrap(objKey: string, prop: ObjectKey, value: any) {
-  if (isBgbed(value) || isImmutable(value)) {
+  if (isProxiedComposite(value) || isImmutable(value)) {
     return value;
   }
   return bgbe(`${objKey}.${String(prop)}`, value);
@@ -69,7 +69,7 @@ function createHandler(objKey: string) {
       return target[prop];
     },
     set(target, prop, value): boolean {
-      if (!isProxyable(value)) {
+      if (!isProxyableComposite(value)) {
         throw new Error(`Invalid value type for property ${String(prop)}`);
       }
 
@@ -93,10 +93,10 @@ function createHandler(objKey: string) {
 // TODO:
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
-export default function bgbe<T extends Proxyable = Proxyable>(
+export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
   keyOrObj: string | T,
   obj?: T
-): T & Proxied {
+): T & ProxiedComposite {
   let objKey: string = "global";
   if (typeof keyOrObj === "string") {
     objKey = keyOrObj;
@@ -118,7 +118,8 @@ export default function bgbe<T extends Proxyable = Proxyable>(
       configurable: false,
       writable: false,
     });
-    return new Proxy(proxiedArray, createHandler(objKey));
+    return new Proxy(proxiedArray, createHandler(objKey)) as T &
+      ProxiedComposite;
   } else {
     const proxiedObject: any = {};
     for (const key in obj) {
@@ -127,6 +128,7 @@ export default function bgbe<T extends Proxyable = Proxyable>(
       }
     }
     proxiedObject.__bgbe_proxy__ = true;
-    return new Proxy(proxiedObject, createHandler(objKey));
+    return new Proxy(proxiedObject, createHandler(objKey)) as T &
+      ProxiedComposite;
   }
 }

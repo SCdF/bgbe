@@ -3,10 +3,10 @@ import { expectType } from "tsd";
 
 import bgbe, {
   bgbeEventLog,
-  isBgbed,
+  isProxiedComposite,
   isImmutable,
   isObjectKey,
-  isProxyable,
+  isProxyableComposite,
   resetBgbeEventLog,
 } from "./bgbe";
 
@@ -87,7 +87,7 @@ describe("Runtime Behavior Tests", () => {
 
   it("should identify proxied objects", () => {
     const data = bgbe({});
-    expect(isBgbed(data)).toBe(true);
+    expect(isProxiedComposite(data)).toBe(true);
   });
 
   it("should support arrays within objects", () => {
@@ -216,26 +216,26 @@ describe("runtime type checking", () => {
       expect(isImmutable(new Date())).toBe(false);
     });
   });
-  describe("isProxyable: Array", () => {
+  describe("isProxyableComposite: Array", () => {
     it("should return true for arrays of valid values", () => {
-      expect(isProxyable([0, 1, 2])).toBe(true);
+      expect(isProxyableComposite([0, 1, 2])).toBe(true);
     });
 
-    it("should return true for arrays with recursively alid values", () => {
-      expect(isProxyable([0, 1, {}])).toBe(true);
+    it("should return true for arrays with recursively valid values", () => {
+      expect(isProxyableComposite([0, 1, {}])).toBe(true);
     });
   });
-  describe("isProxyable: Object", () => {
+  describe("isProxyableComposite: Object", () => {
     it("should return true for objects with valid keys and values", () => {
-      expect(isProxyable({ foo: "bar" })).toBe(true);
+      expect(isProxyableComposite({ foo: "bar" })).toBe(true);
     });
 
     it("should return true for objects with recursively valid keys and values", () => {
-      expect(isProxyable({ foo: "bar", baz: {} })).toBe(true);
+      expect(isProxyableComposite({ foo: "bar", baz: {} })).toBe(true);
     });
 
     it("should return false for objects with invalid values", () => {
-      expect(isProxyable({ foo: new Date() })).toBe(false);
+      expect(isProxyableComposite({ foo: new Date() })).toBe(false);
     });
   });
 });
@@ -243,12 +243,12 @@ describe("runtime type checking", () => {
 describe("bgbe wrap functionality", () => {
   it("should wrap nested arrays", () => {
     const data = bgbe({ array: [0, 1, 2] });
-    expect(isBgbed(data.array)).toBe(true);
+    expect(isProxiedComposite(data.array)).toBe(true);
   });
 
   it("should wrap nested objects", () => {
     const data = bgbe({ nested: { key: "value" } });
-    expect(isBgbed(data.nested)).toBe(true);
+    expect(isProxiedComposite(data.nested)).toBe(true);
   });
 
   it("should log changes in nested arrays", () => {

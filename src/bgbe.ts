@@ -2,20 +2,12 @@ type ObjectKey = string | number | symbol;
 type Immutable = ObjectKey | boolean | null | undefined;
 
 // Acceptable inputs
-type ProxyableArray = Array<Immutable | ProxyableArray>;
-type ProxyableObject = {
-  [key: ObjectKey]: Immutable | ProxyableObject | ProxyableArray;
-};
+type Proxyable =
+  | (Immutable | Proxyable)[]
+  | { [key: ObjectKey]: Immutable | Proxyable };
 
 // Resulting outputs
-type ProxiedArray = Array<Immutable | ProxiedArray> & {
-  __bgbe_proxy__: true;
-};
-type ProxiedObject = {
-  [key: ObjectKey]: Immutable | ProxiedObject | ProxiedArray;
-  __bgbe_proxy__: true;
-};
-type ProxiedTarget<T> = T & (ProxiedObject | ProxiedArray);
+type Proxied = Proxyable & { __bgbe_proxy__: true };
 
 export function isObjectKey(key: any): key is ObjectKey {
   return typeof key === "string" || typeof key === "number";
@@ -32,26 +24,25 @@ export function isImmutable(obj: any): obj is Immutable {
   );
 }
 
-export function isProxyableArray(obj: any): obj is ProxyableArray {
-  return obj && Array.isArray(obj) && obj.every(isValidValue);
+export function isProxyable(obj: any): obj is Proxyable {
+  if (isImmutable(obj)) {
+    return true;
+  }
+  if (Array.isArray(obj)) {
+    return obj.every(isProxyable);
+  }
+  if (typeof obj === "object" && obj !== null) {
+    return (
+      obj &&
+      Object.getPrototypeOf(obj) === Object.prototype &&
+      Object.keys(obj).every(isObjectKey) &&
+      Object.values(obj).every(isProxyable)
+    );
+  }
+  return false;
 }
 
-export function isProxyableObject(obj: any): obj is ProxyableObject {
-  return (
-    obj &&
-    Object.getPrototypeOf(obj) === Object.prototype &&
-    Object.keys(obj).every(isObjectKey) &&
-    Object.values(obj).every(isValidValue)
-  );
-}
-
-export function isValidValue(value: any): boolean {
-  return (
-    isImmutable(value) || isProxyableArray(value) || isProxyableObject(value)
-  );
-}
-
-export function isBgbed(obj: any): obj is ProxiedObject {
+export function isBgbed(obj: any): obj is Proxied {
   return obj?.__bgbe_proxy__;
 }
 
@@ -78,12 +69,12 @@ function createHandler(objKey: string) {
       return target[prop];
     },
     set(target, prop, value): boolean {
-      if (!isValidValue(value)) {
+      if (!isProxyable(value)) {
         throw new Error(`Invalid value type for property ${String(prop)}`);
       }
 
       const wrappedValue = wrap(objKey, prop, value);
-      target[prop as keyof ProxiedTarget<any>] = wrappedValue;
+      target[prop as keyof typeof target] = wrappedValue;
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
         bgbeEventLog.push({ objKey, prop, value: wrappedValue });
@@ -102,9 +93,10 @@ function createHandler(objKey: string) {
 // TODO:
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
-export default function bgbe<
-  T extends ProxyableObject | ProxyableArray = ProxyableObject
->(keyOrObj: string | T, obj?: T): ProxiedTarget<T> {
+export default function bgbe<T extends Proxyable = Proxyable>(
+  keyOrObj: string | T,
+  obj?: T
+): T & Proxied {
   let objKey: string = "global";
   if (typeof keyOrObj === "string") {
     objKey = keyOrObj;
@@ -128,7 +120,7 @@ export default function bgbe<
     });
     return new Proxy(proxiedArray, createHandler(objKey));
   } else {
-    const proxiedObject: ProxiedObject = {} as ProxiedObject;
+    const proxiedObject: any = {};
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
         proxiedObject[key] = wrap(objKey, key, obj[key]);

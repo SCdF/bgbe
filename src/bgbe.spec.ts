@@ -6,8 +6,7 @@ import bgbe, {
   isBgbed,
   isImmutable,
   isObjectKey,
-  isProxyableArray,
-  isProxyableObject,
+  isProxyable,
   resetBgbeEventLog,
 } from "./bgbe";
 
@@ -217,34 +216,26 @@ describe("runtime type checking", () => {
       expect(isImmutable(new Date())).toBe(false);
     });
   });
-  describe("isProxyableArray", () => {
+  describe("isProxyable: Array", () => {
     it("should return true for arrays of valid values", () => {
-      expect(isProxyableArray([0, 1, 2])).toBe(true);
+      expect(isProxyable([0, 1, 2])).toBe(true);
     });
 
     it("should return true for arrays with recursively alid values", () => {
-      expect(isProxyableArray([0, 1, {}])).toBe(true);
-    });
-
-    it("should return false for non-arrays", () => {
-      expect(isProxyableArray({})).toBe(false);
+      expect(isProxyable([0, 1, {}])).toBe(true);
     });
   });
-  describe("isProxyableObject", () => {
+  describe("isProxyable: Object", () => {
     it("should return true for objects with valid keys and values", () => {
-      expect(isProxyableObject({ foo: "bar" })).toBe(true);
+      expect(isProxyable({ foo: "bar" })).toBe(true);
     });
 
     it("should return true for objects with recursively valid keys and values", () => {
-      expect(isProxyableObject({ foo: "bar", baz: {} })).toBe(true);
-    });
-
-    it("should return false for non-objects", () => {
-      expect(isProxyableObject([])).toBe(false);
+      expect(isProxyable({ foo: "bar", baz: {} })).toBe(true);
     });
 
     it("should return false for objects with invalid values", () => {
-      expect(isProxyableObject({ foo: new Date() })).toBe(false);
+      expect(isProxyable({ foo: new Date() })).toBe(false);
     });
   });
 });

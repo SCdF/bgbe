@@ -1,13 +1,5 @@
+import Benchmark from "benchmark";
 import bgbe, { resetBgbeEventLog } from "./bgbe";
-
-function measurePerformance(fn: () => void, iterations: number): number {
-  const start = performance.now();
-  for (let i = 0; i < iterations; i++) {
-    fn();
-  }
-  const end = performance.now();
-  return end - start;
-}
 
 function createMinimalObject() {
   return { a: 1 };
@@ -22,45 +14,46 @@ function createLargeObject() {
 }
 
 function setValues(obj: any) {
-  for (let i = 0; i < 1000; i++) {
-    obj[`key${i}`] = i * 2;
-  }
+  obj[`key`] = "foo";
 }
 
 function getValues(obj: any) {
-  for (let i = 0; i < 1000; i++) {
-    const value = obj[`key${i}`];
-  }
+  return obj[`key`];
 }
-
-const iterations = 5000;
 
 const rawMinimalObject = createMinimalObject();
 const rawLargeObject = createLargeObject();
 const bgbeMinimalObject = bgbe(createMinimalObject());
 const bgbeLargeObject = bgbe(createLargeObject());
 
-const results = [
-  {
-    operation: "Create Minimal Object",
-    raw: measurePerformance(createMinimalObject, iterations),
-    bgbe: measurePerformance(() => bgbe(createMinimalObject()), iterations),
-  },
-  {
-    operation: "Create Large Object",
-    raw: measurePerformance(createLargeObject, iterations),
-    bgbe: measurePerformance(() => bgbe(createLargeObject()), iterations),
-  },
-  {
-    operation: "Set Values (Large Object)",
-    raw: measurePerformance(() => setValues(rawLargeObject), iterations),
-    bgbe: measurePerformance(() => setValues(bgbeLargeObject), iterations),
-  },
-  {
-    operation: "Get Values (Large Object)",
-    raw: measurePerformance(() => getValues(rawLargeObject), iterations),
-    bgbe: measurePerformance(() => getValues(bgbeLargeObject), iterations),
-  },
-];
+const suite = new Benchmark.Suite("bgbe basics");
 
-console.table(results);
+suite
+  .add("Create Minimal Object - raw", function () {
+    createMinimalObject();
+  })
+  .add("Create Minimal Object - bgbe", function () {
+    bgbe(createMinimalObject());
+  })
+  .add("Create Large Object - raw", function () {
+    createLargeObject();
+  })
+  .add("Create Large Object - bgbe", function () {
+    bgbe(createLargeObject());
+  })
+  .add("Set Values (Large Object) - raw", function () {
+    setValues(rawLargeObject);
+  })
+  .add("Set Values (Large Object) - bgbe", function () {
+    setValues(bgbeLargeObject);
+  })
+  .add("Get Values (Large Object) - raw", function () {
+    getValues(rawLargeObject);
+  })
+  .add("Get Values (Large Object) - bgbe", function () {
+    getValues(bgbeLargeObject);
+  })
+  .on("cycle", function (event: any) {
+    console.log(String(event.target));
+  })
+  .run();

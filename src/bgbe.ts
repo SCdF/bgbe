@@ -1,5 +1,5 @@
-type ObjectKey = string | number;
-type Immutable = string | number | boolean | null | undefined;
+type ObjectKey = string | number | symbol;
+type Immutable = ObjectKey | boolean | null | undefined;
 
 // Acceptable inputs
 type ProxyableArray = Array<Immutable | ProxyableArray>;
@@ -26,6 +26,7 @@ export function isImmutable(obj: any): obj is Immutable {
     typeof obj === "string" ||
     typeof obj === "number" ||
     typeof obj === "boolean" ||
+    typeof obj === "symbol" ||
     obj === null ||
     obj === undefined
   );
@@ -64,6 +65,40 @@ export function resetBgbeEventLog() {
   bgbeEventLog = [];
 }
 
+function wrap(objKey: string, prop: ObjectKey, value: any) {
+  if (isBgbed(value) || isImmutable(value)) {
+    return value;
+  }
+  return bgbe(`${objKey}.${String(prop)}`, value);
+}
+
+function createHandler(objKey: string) {
+  return {
+    get(target, prop) {
+      return target[prop];
+    },
+    set(target, prop, value): boolean {
+      if (!isValidValue(value)) {
+        throw new Error(`Invalid value type for property ${String(prop)}`);
+      }
+
+      const wrappedValue = wrap(objKey, prop, value);
+      target[prop as keyof ProxiedTarget<any>] = wrappedValue;
+
+      if (!Array.isArray(target) || !isNaN(Number(prop))) {
+        bgbeEventLog.push({ objKey, prop, value: wrappedValue });
+      }
+
+      return true;
+    },
+    deleteProperty(target, prop) {
+      delete target[prop];
+      bgbeEventLog.push({ objKey, prop, value: undefined });
+      return true;
+    },
+  };
+}
+
 // TODO:
 // - understand setting and identified proxy as the value of another proxy, and
 //   record the link in the internal datastructure, not the values themselves
@@ -80,56 +115,26 @@ export default function bgbe<
     obj = keyOrObj;
   }
 
-  const wrap = (key: string, value: any) => {
-    if (isBgbed(value) || isImmutable(value)) {
-      return value;
-    }
-    return bgbe(key, value);
-  };
-
-  const handler = {
-    get(target, prop) {
-      return target[prop];
-    },
-    set(target, prop, value): boolean {
-      if (!isValidValue(value)) {
-        throw new Error(`Invalid value type for property ${String(prop)}`);
-      }
-
-      const wrappedValue = wrap(`${objKey}.${prop}`, value);
-      target[prop as keyof ProxiedTarget<T>] = wrappedValue;
-
-      if (!Array.isArray(target) || !isNaN(Number(prop))) {
-        bgbeEventLog.push({ objKey, prop, value: wrappedValue });
-      }
-
-      return true;
-    },
-    // TODO: think about this: do we want to set to undefined, or a specific deletion?
-    deleteProperty(target, prop) {
-      delete target[prop];
-      bgbeEventLog.push({ objKey, prop, value: undefined });
-      return true;
-    },
-  };
-
   if (Array.isArray(obj)) {
-    const proxiedArray = obj.map((value, index) =>
-      wrap(`${objKey}.${index}`, value)
-    ) as ProxiedArray;
+    const proxiedArray = new Array(obj.length);
+    for (let i = 0; i < obj.length; i++) {
+      proxiedArray[i] = wrap(objKey, i, obj[i]);
+    }
     Object.defineProperty(proxiedArray, "__bgbe_proxy__", {
       value: true,
       enumerable: false,
       configurable: false,
       writable: false,
     });
-    return new Proxy(proxiedArray, handler);
+    return new Proxy(proxiedArray, createHandler(objKey));
   } else {
-    const proxiedObject = Object.entries(obj).reduce((acc, [key, value]) => {
-      acc[key] = wrap(`${objKey}.${key}`, value);
-      return acc;
-    }, {} as ProxiedObject);
+    const proxiedObject: ProxiedObject = {} as ProxiedObject;
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        proxiedObject[key] = wrap(objKey, key, obj[key]);
+      }
+    }
     proxiedObject.__bgbe_proxy__ = true;
-    return new Proxy(proxiedObject, handler);
+    return new Proxy(proxiedObject, createHandler(objKey));
   }
 }

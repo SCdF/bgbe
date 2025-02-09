@@ -90,9 +90,6 @@ function createHandler(objKey: string) {
   };
 }
 
-// TODO:
-// - understand setting and identified proxy as the value of another proxy, and
-//   record the link in the internal datastructure, not the values themselves
 export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
   keyOrObj: string | T,
   obj?: T

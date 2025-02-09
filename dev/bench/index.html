@@ -198,11 +198,8 @@
                 {
                   label: `raw`,
                   data: rawData.map((d) => d.bench.value),
-                  borderColor:
-                    toolColors[rawData.length > 0 ? rawData[0].tool : "_"],
-                  backgroundColor:
-                    toolColors[rawData.length > 0 ? rawData[0].tool : "_"] +
-                    "60",
+                  borderColor: toolColors["_"],
+                  backgroundColor: toolColors["_"] + "60",
                 },
                 {
                   label: `bgbe`,

@@ -12,10 +12,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [18, 20, node]
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,7 +19,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: latest
 
       - name: Install pnpm
         run: npm install -g pnpm

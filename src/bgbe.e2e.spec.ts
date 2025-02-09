@@ -50,11 +50,15 @@ describe("bgbe end-to-end test", () => {
       { objKey: "testObject.f", prop: "g", value: "new nested" },
       { objKey: "testObject.f.h", prop: "1", value: 10 },
       { objKey: "testObject.f.i", prop: "j", value: "new deeply nested" },
-      { objKey: "testObject", prop: "newProp", value: { k: "new object" } },
+      {
+        objKey: "testObject",
+        prop: "newProp",
+        value: expect.objectContaining({ k: "new object" }),
+      },
       {
         objKey: "testObject.f",
         prop: "newNestedProp",
-        value: { l: "another new object" },
+        value: expect.objectContaining({ l: "another new object" }),
       },
       { objKey: "testObject", prop: "d", value: undefined },
       { objKey: "testObject.f", prop: "h", value: undefined },

@@ -96,13 +96,11 @@ export default function bgbe<
         throw new Error(`Invalid value type for property ${String(prop)}`);
       }
 
-      (target as ProxiedTarget<T>)[prop as keyof ProxiedTarget<T>] = wrap(
-        `${objKey}.${prop}`,
-        value
-      );
+      const wrappedValue = wrap(`${objKey}.${prop}`, value);
+      target[prop as keyof ProxiedTarget<T>] = wrappedValue;
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
-        bgbeEventLog.push({ objKey, prop, value });
+        bgbeEventLog.push({ objKey, prop, value: wrappedValue });
       }
 
       return true;
@@ -127,12 +125,11 @@ export default function bgbe<
     });
     return new Proxy(proxiedArray, handler);
   } else {
-    const proxiedObject = Object.fromEntries(
-      Object.entries(obj).map(([key, value]) => [
-        key,
-        wrap(`${objKey}.${key}`, value),
-      ])
-    ) as ProxiedObject;
-    return new Proxy({ ...proxiedObject, __bgbe_proxy__: true }, handler);
+    const proxiedObject = Object.entries(obj).reduce((acc, [key, value]) => {
+      acc[key] = wrap(`${objKey}.${key}`, value);
+      return acc;
+    }, {} as ProxiedObject);
+    proxiedObject.__bgbe_proxy__ = true;
+    return new Proxy(proxiedObject, handler);
   }
 }

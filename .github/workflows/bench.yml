@@ -31,17 +31,10 @@ jobs:
       - name: Benchmark
         run: pnpm perf | tee output.txt
 
-      - name: Download previous benchmark data
-        uses: actions/cache@v4
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmark
-
       - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: "benchmarkjs"
           output-file-path: output.txt
-          external-data-json-path: ./cache/benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true

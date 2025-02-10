@@ -1,3 +1,5 @@
+import * as Y from "yjs";
+
 type ObjectKey = string | number | symbol;
 type Immutable = ObjectKey | boolean | null | undefined;
 
@@ -7,7 +9,7 @@ type ProxyableComposite =
   | { [key: ObjectKey]: Immutable | ProxyableComposite };
 
 // Resulting outputs
-type ProxiedComposite = ProxyableComposite & { __bgbe_proxy__: true };
+type ProxiedComposite = ProxyableComposite & { __bgbe_proxy__: string };
 
 export function isObjectKey(key: any): key is ObjectKey {
   return typeof key === "string" || typeof key === "number";
@@ -43,7 +45,7 @@ export function isProxyableComposite(obj: any): obj is ProxyableComposite {
 }
 
 export function isProxiedComposite(obj: any): obj is ProxiedComposite {
-  return obj?.__bgbe_proxy__;
+  return !!obj?.__bgbe_proxy__;
 }
 
 export let bgbeEventLog: Array<{
@@ -51,22 +53,55 @@ export let bgbeEventLog: Array<{
   prop: ObjectKey;
   value: any;
 }> = [];
-
-export function resetBgbeEventLog() {
+let ydoc = new Y.Doc();
+let bgbeMap = new Map<string, ProxiedComposite>();
+export function resetState() {
   bgbeEventLog = [];
+  ydoc = new Y.Doc();
+  bgbeMap = new Map<string, ProxiedComposite>();
 }
 
 function wrap(objKey: string, prop: ObjectKey, value: any) {
-  if (isProxiedComposite(value) || isImmutable(value)) {
+  if (isImmutable(value)) {
     return value;
   }
-  return bgbe(`${objKey}.${String(prop)}`, value);
+
+  const symlink = {
+    docKey: `${objKey}.${String(prop)}`,
+    symlink: true,
+  } as Symlink;
+
+  if (!isProxiedComposite(value)) {
+    bgbe(`${objKey}.${String(prop)}`, value);
+  }
+
+  return symlink;
 }
 
-function createHandler(objKey: string) {
+type Symlink = {
+  docKey: string;
+  symlink: true;
+};
+function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
   return {
     get(target, prop) {
-      return target[prop];
+      if (prop === "__bgbe_proxy__") {
+        return objKey;
+      }
+
+      let innerProp;
+
+      if (inner instanceof Y.Array) {
+        innerProp = inner.get(prop);
+      } else {
+        innerProp = inner.get(prop);
+      }
+
+      if (innerProp?.symlink) {
+        return bgbeMap.get(innerProp.docKey);
+      }
+
+      return innerProp;
     },
     set(target, prop, value): boolean {
       if (!isProxyableComposite(value)) {
@@ -74,7 +109,25 @@ function createHandler(objKey: string) {
       }
 
       const wrappedValue = wrap(objKey, prop, value);
-      target[prop as keyof typeof target] = wrappedValue;
+
+      if (inner instanceof Y.Array) {
+        // FIXME: this is not to JS spec
+        // To change a value you need to delete then insert
+        // But you can't delete or insert outside of the array bounds
+        //   const array = [];
+        //   array[2] = 1;
+        // Will not work as expected:
+        //   [undefined, undefined, 1] // what JS does
+        //   [1] // what we do
+        if (inner.length > Number(prop)) {
+          inner.delete(Number(prop));
+          inner.insert(Number(prop), [wrappedValue]);
+        } else {
+          inner.push([wrappedValue]);
+        }
+      } else {
+        inner.set(prop, wrappedValue);
+      }
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
         bgbeEventLog.push({ objKey, prop, value: wrappedValue });
@@ -104,28 +157,34 @@ export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
     obj = keyOrObj;
   }
 
+  let toReturn: T & ProxiedComposite;
+
   if (Array.isArray(obj)) {
-    const proxiedArray = new Array(obj.length);
+    const proxiedArray = ydoc.getArray<T>(objKey);
+
+    toReturn = new Proxy(
+      proxiedArray,
+      createHandler(objKey, proxiedArray)
+    ) as T & ProxiedComposite;
+
     for (let i = 0; i < obj.length; i++) {
-      proxiedArray[i] = wrap(objKey, i, obj[i]);
+      toReturn[i] = wrap(objKey, i, obj[i]);
     }
-    Object.defineProperty(proxiedArray, "__bgbe_proxy__", {
-      value: true,
-      enumerable: false,
-      configurable: false,
-      writable: false,
-    });
-    return new Proxy(proxiedArray, createHandler(objKey)) as T &
-      ProxiedComposite;
   } else {
-    const proxiedObject: any = {};
+    const proxiedObject = ydoc.getMap<T>(objKey);
+
+    toReturn = new Proxy(
+      proxiedObject,
+      createHandler(objKey, proxiedObject)
+    ) as T & ProxiedComposite;
+
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        proxiedObject[key] = wrap(objKey, key, obj[key]);
+        toReturn[key] = wrap(objKey, key, obj[key]);
       }
     }
-    proxiedObject.__bgbe_proxy__ = true;
-    return new Proxy(proxiedObject, createHandler(objKey)) as T &
-      ProxiedComposite;
   }
+
+  bgbeMap.set(objKey, toReturn);
+  return toReturn;
 }

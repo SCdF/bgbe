@@ -89,7 +89,11 @@ type Symlink = {
   docKey: string;
   symlink: true;
 };
-function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
+function createHandler(
+  objKey: string,
+  inner: Y.Map<any>,
+  type: "array" | "object"
+) {
   return {
     get(target, prop) {
       // TODO: do we want to pass through the iterator and get
@@ -111,18 +115,14 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
         return target[prop];
       }
 
-      // Get data from Yjs
-      let innerVal;
-      if (inner instanceof Y.Array) {
-        if (prop === "length") {
-          return inner.length;
-        }
-        if (!isNaN(Number(prop))) {
-          innerVal = inner.get(Number(prop));
-        }
-      } else {
-        innerVal = inner.get(prop);
+      // Array length
+      if (type === "array" && prop === "length") {
+        return inner.size;
       }
+
+      // Get data from Yjs
+      const innerVal = inner.get(prop);
+
       if (innerVal?.symlink) {
         return bgbeMap.get(innerVal.docKey);
       }
@@ -152,27 +152,7 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
       }
 
       const wrappedValue = wrap(objKey, prop, value);
-
-      if (inner instanceof Y.Array) {
-        if (!isNaN(Number(prop))) {
-          // FIXME: this is not to JS spec
-          // To change a value you need to delete then insert
-          // But you can't delete or insert outside of the array bounds
-          //   const array = [];
-          //   array[2] = 1;
-          // Will not work as expected:
-          //   [undefined, undefined, 1] // what JS does
-          //   [1] // what we do
-          if (inner.length > Number(prop)) {
-            inner.delete(Number(prop));
-            inner.insert(Number(prop), [wrappedValue]);
-          } else {
-            inner.push([wrappedValue]);
-          }
-        }
-      } else {
-        inner.set(prop, wrappedValue);
-      }
+      inner.set(prop, wrappedValue);
 
       if (!Array.isArray(target) || !isNaN(Number(prop))) {
         bgbeEventLog.push({ objKey, prop, value: wrappedValue });
@@ -181,15 +161,7 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
       return true;
     },
     deleteProperty(target, prop) {
-      if (inner instanceof Y.Array) {
-        if (!isNaN(Number(prop))) {
-          // JS arrays, delete sets to undefined
-          inner.delete(Number(prop));
-          inner.insert(Number(prop), [null]);
-        }
-      } else {
-        inner.delete(prop);
-      }
+      inner.delete(prop);
 
       // delete target[prop];
       bgbeEventLog.push({ objKey, prop, value: undefined });
@@ -223,27 +195,18 @@ export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
   // we'd have to reorder how we do things
   bgbeMap.set(objKey, {} as ProxiedComposite);
 
-  let toReturn: T & ProxiedComposite;
-
-  if (Array.isArray(obj)) {
-    const yarray = ydoc.getArray(objKey);
-    yarray.push(obj.map((value, idx) => wrap(objKey, idx, value)));
-
-    toReturn = new Proxy([], createHandler(objKey, yarray)) as T &
-      ProxiedComposite;
-  } else {
-    const ymap = ydoc.getMap(objKey);
-
-    toReturn = new Proxy({}, createHandler(objKey, ymap)) as T &
-      ProxiedComposite;
-
-    for (const key in obj) {
-      if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        ymap.set(key, wrap(objKey, key, obj[key]));
-      }
+  const type = Array.isArray(obj) ? "array" : "object";
+  const ymap = ydoc.getMap(objKey);
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      ymap.set(key, wrap(objKey, key, obj[key]));
     }
   }
-
+  const toReturn = new Proxy(
+    type === "array" ? [] : {},
+    createHandler(objKey, ymap, type)
+  ) as T & ProxiedComposite;
   bgbeMap.set(objKey, toReturn);
+
   return toReturn;
 }

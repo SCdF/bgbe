@@ -22,7 +22,7 @@ const both: [string, IdentityFn][] = [
   ["bgbe", bgbe],
 ];
 
-describe.skip("TypeScript compilation", () => {
+describe("TypeScript compilation", () => {
   it("should allow setting valid ", () => {
     const data = bgbe<{ foo?: string }>({});
     data.foo = "bar";
@@ -47,20 +47,20 @@ describe.skip("TypeScript compilation", () => {
 
   it("should fail at generic level for unsupported types, even when not passed", () => {
     // @ts-expect-error
-    const bar = bgbe<{ date?: Date }>({});
+    const bar = bgbe<{ date?: Date }>("bar", {});
 
     // @ts-expect-error
-    const bar2 = bgbe<{ foo: { date?: Date } }>({ foo: {} });
+    const bar2 = bgbe<{ foo: { date?: Date } }>("bar2", { foo: {} });
   });
 
   it(`shouldn't lose passed type information`, () => {
-    const data = bgbe({});
+    const data = bgbe("data", {});
     try {
       // @ts-expect-error data is type {}
       data.foo = "bar";
     } catch (err) {}
 
-    const data2 = bgbe<{ foo?: string }>({});
+    const data2 = bgbe<{ foo?: string }>("data2", {});
     data2.foo = "bar"; // should work
   });
 });
@@ -323,7 +323,7 @@ describe("runtime type checking", () => {
   });
 });
 
-describe.skip("bgbe wrap", () => {
+describe("bgbe wrap", () => {
   it("should wrap nested arrays", () => {
     const data = bgbe({ array: [0, 1, 2] });
     expect(isProxiedComposite(data.array)).toBe(true);

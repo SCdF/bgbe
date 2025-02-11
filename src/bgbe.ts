@@ -61,7 +61,7 @@ export function resetState() {
 }
 
 function wrap(
-  objKey: string,
+  baseKey: string,
   prop: ObjectKey,
   value: Immutable | ProxyableComposite
 ): Immutable | Symlink {
@@ -69,14 +69,18 @@ function wrap(
     return value;
   }
 
+  let docKey: string;
+  if (isProxiedComposite(value)) {
+    docKey = value.__bgbe_proxy__;
+  } else {
+    docKey = `${baseKey}.${String(prop)}`;
+    bgbe(docKey, value);
+  }
+
   const symlink = {
-    docKey: `${objKey}.${String(prop)}`,
+    docKey,
     symlink: true,
   } as Symlink;
-
-  if (!isProxiedComposite(value)) {
-    bgbe(`${objKey}.${String(prop)}`, value);
-  }
 
   return symlink;
 }
@@ -184,6 +188,17 @@ export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
   } else {
     obj = keyOrObj;
   }
+
+  if (bgbeMap.has(objKey)) {
+    throw Error(`Duplicate bgbe instantiation: ${objKey}`);
+  }
+  // set a stub to lock the key. We'll replace it at the end of this function
+  // This is to stop:
+  // const foo = bgbe({})
+  // foo.bar = bgbe({})\
+  // TODO: in the future we automatically get those keys right?
+  // we'd have to reorder how we do things
+  bgbeMap.set(objKey, {} as ProxiedComposite);
 
   let toReturn: T & ProxiedComposite;
 

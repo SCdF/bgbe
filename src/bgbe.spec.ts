@@ -111,9 +111,19 @@ describe("runtime behavior", () => {
       expectType<number[]>(arrays2.data);
     });
 
-    it("should handle nested proxies correctly", () => {
+    it("should throw if you link to the same bgbe multiple times", () => {
       const data = bgbe({}) as any;
-      data.foo = bgbe({});
+      expect(() => (data.foo = bgbe({}))).toThrowError();
+    });
+
+    it("should handle nested proxies correctly", () => {
+      type Baaer = { bar?: string };
+      type Fooer = { foo?: Baaer };
+
+      const data = bgbe({} as Fooer);
+      data.foo = bgbe("different-thing", {} as Baaer);
+      // FIXME: doesn't work because we're passing a
+      // differnet name to the symlink generator
       data.foo.bar = "smang";
       expect(data.foo.bar).toBe("smang");
     });

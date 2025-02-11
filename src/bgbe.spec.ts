@@ -85,7 +85,7 @@ describe("runtime behavior", () => {
   });
 
   // FIXME proxying should support this, idk why it doesn't?
-  describe.skip("proxied functions", () => {
+  describe("proxied functions", () => {
     it("should support pushing to an array", () => {
       const data = bgbe([1, 2, 3]);
       data.push(4);

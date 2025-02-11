@@ -89,25 +89,48 @@ type Symlink = {
 function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
   return {
     get(target, prop) {
+      console.log("get", { target, prop });
+
+      // Yes, we are proxied
       if (prop === "__bgbe_proxy__") {
         return objKey;
       }
 
-      let innerProp;
+      // Trying to access prototype stuff, eg Iterator
+      if (typeof prop === "symbol") {
+        return target[prop];
+      }
 
+      // Trying to access functions
+      if (typeof target[prop] === "function") {
+        return target[prop];
+      }
+
+      // Get data from Yjs
+      let innerVal;
       if (inner instanceof Y.Array) {
-        innerProp = inner.get(prop);
+        if (prop === "length") {
+          return inner.length;
+        }
+        if (!isNaN(Number(prop))) {
+          innerVal = inner.get(Number(prop));
+        }
       } else {
-        innerProp = inner.get(prop);
+        innerVal = inner.get(prop);
+      }
+      if (innerVal?.symlink) {
+        return bgbeMap.get(innerVal.docKey);
       }
 
-      if (innerProp?.symlink) {
-        return bgbeMap.get(innerProp.docKey);
+      if (!innerVal) {
+        return target[prop];
       }
 
-      return innerProp;
+      return innerVal;
     },
     set(target, prop, value): boolean {
+      console.log("set", { target, prop, value });
+
       if (!isProxyableComposite(value)) {
         throw new Error(`Invalid value type for property ${String(prop)}`);
       }
@@ -115,19 +138,21 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
       const wrappedValue = wrap(objKey, prop, value);
 
       if (inner instanceof Y.Array) {
-        // FIXME: this is not to JS spec
-        // To change a value you need to delete then insert
-        // But you can't delete or insert outside of the array bounds
-        //   const array = [];
-        //   array[2] = 1;
-        // Will not work as expected:
-        //   [undefined, undefined, 1] // what JS does
-        //   [1] // what we do
-        if (inner.length > Number(prop)) {
-          inner.delete(Number(prop));
-          inner.insert(Number(prop), [wrappedValue]);
-        } else {
-          inner.push([wrappedValue]);
+        if (!isNaN(Number(prop))) {
+          // FIXME: this is not to JS spec
+          // To change a value you need to delete then insert
+          // But you can't delete or insert outside of the array bounds
+          //   const array = [];
+          //   array[2] = 1;
+          // Will not work as expected:
+          //   [undefined, undefined, 1] // what JS does
+          //   [1] // what we do
+          if (inner.length > Number(prop)) {
+            inner.delete(Number(prop));
+            inner.insert(Number(prop), [wrappedValue]);
+          } else {
+            inner.push([wrappedValue]);
+          }
         }
       } else {
         inner.set(prop, wrappedValue);
@@ -167,12 +192,12 @@ export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
     const yarray = ydoc.getArray(objKey);
     yarray.push(obj.map((value, idx) => wrap(objKey, idx, value)));
 
-    toReturn = new Proxy(obj, createHandler(objKey, yarray)) as T &
+    toReturn = new Proxy([], createHandler(objKey, yarray)) as T &
       ProxiedComposite;
   } else {
     const ymap = ydoc.getMap(objKey);
 
-    toReturn = new Proxy(obj, createHandler(objKey, ymap)) as T &
+    toReturn = new Proxy({}, createHandler(objKey, ymap)) as T &
       ProxiedComposite;
 
     for (const key in obj) {

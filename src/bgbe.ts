@@ -1,6 +1,6 @@
 import * as Y from "yjs";
 
-type ObjectKey = string | number | symbol;
+type ObjectKey = string | number;
 type Immutable = ObjectKey | boolean | null | undefined;
 
 // Acceptable inputs
@@ -20,7 +20,6 @@ export function isImmutable(obj: any): obj is Immutable {
     typeof obj === "string" ||
     typeof obj === "number" ||
     typeof obj === "boolean" ||
-    typeof obj === "symbol" ||
     obj === null ||
     obj === undefined
   );

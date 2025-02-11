@@ -4,7 +4,7 @@ type ObjectKey = string | number;
 type Immutable = ObjectKey | boolean | null | undefined;
 
 // Acceptable inputs
-type ProxyableComposite =
+export type ProxyableComposite =
   | (Immutable | ProxyableComposite)[]
   | { [key: ObjectKey]: Immutable | ProxyableComposite };
 
@@ -92,6 +92,8 @@ type Symlink = {
 function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
   return {
     get(target, prop) {
+      // TODO: do we want to pass through the iterator and get
+      // the yjs iterator? Does it matter?
       console.log("get", { target, prop });
 
       // Yes, we are proxied
@@ -130,6 +132,21 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
     set(target, prop, value): boolean {
       console.log("set", { target, prop, value });
 
+      // You can't set this value!
+      if (prop === "__bgbe_proxy__") {
+        throw Error('Cannot set "__bgbe_proxy__"');
+      }
+
+      // Trying to access prototype stuff, eg Iterator
+      if (typeof prop === "symbol") {
+        target[prop] = value;
+      }
+
+      // Trying to access functions
+      if (typeof target[prop] === "function") {
+        target[prop] = value;
+      }
+
       if (!isProxyableComposite(value)) {
         throw new Error(`Invalid value type for property ${String(prop)}`);
       }
@@ -164,7 +181,17 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
       return true;
     },
     deleteProperty(target, prop) {
-      delete target[prop];
+      if (inner instanceof Y.Array) {
+        if (!isNaN(Number(prop))) {
+          // JS arrays, delete sets to undefined
+          inner.delete(Number(prop));
+          inner.insert(Number(prop), [null]);
+        }
+      } else {
+        inner.delete(prop);
+      }
+
+      // delete target[prop];
       bgbeEventLog.push({ objKey, prop, value: undefined });
       return true;
     },

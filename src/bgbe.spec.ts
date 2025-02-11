@@ -8,11 +8,19 @@ import bgbe, {
   isObjectKey,
   isProxyableComposite,
   resetState,
+  ProxyableComposite,
 } from "./bgbe";
 
 beforeEach(() => {
   resetState();
 });
+
+type IdentityFn = <T extends ProxyableComposite>(x: T) => T;
+const identity: IdentityFn = <T>(x: T) => x;
+const both: [string, IdentityFn][] = [
+  ["original", identity],
+  ["bgbe", bgbe],
+];
 
 describe.skip("TypeScript compilation", () => {
   it("should allow setting valid ", () => {
@@ -58,30 +66,56 @@ describe.skip("TypeScript compilation", () => {
 });
 
 describe("runtime behavior", () => {
-  describe("simple", () => {
-    it("should return a proxied object", () => {
-      const obj = bgbe({ foo: "foo" });
+  describe("identification", () => {
+    it("should create a proxied object", () => {
+      const obj = bgbe({});
       expect(isProxiedComposite(obj)).toBe(true);
+    });
+    it("should create a proxied array", () => {
+      const array = bgbe([]);
+      expect(isProxiedComposite(array)).toBe(true);
+    });
+  });
+
+  describe.for(both)("basic cruds - %s", ([_, fn]) => {
+    it("should get an original item", () => {
+      const obj = fn({ foo: "foo" });
       expect(obj.foo).toBe("foo");
     });
-
-    it("should set item on a proxided object", () => {
-      const data = bgbe({ foo: "foo" });
+    it("should set item", () => {
+      const data = fn({ foo: "foo" });
       data.foo = "bar";
       expect(data.foo).toBe("bar");
     });
+    it.todo("delete a property on a proxied object");
 
-    it("should return a proxied array", () => {
-      const array = bgbe([1, 2, 3]);
-      expect(isProxiedComposite(array)).toBe(true);
+    it("should get an original item", () => {
+      const array = fn([1, 2, 3]);
       expect(array[0]).toBe(1);
     });
-
-    it("should set item on a proxided array", () => {
-      const data = bgbe([1, 2, 3]);
+    it("should set item", () => {
+      const data = fn([1, 2, 3]);
       data[0] = 4;
       expect(data[0]).toBe(4);
     });
+    it("delete an item", () => {
+      const data = fn([1, 2, 3]);
+      delete data[0];
+      expect(data[0]).toBe(undefined);
+    });
+  });
+
+  describe("get", () => {
+    it.todo("should get basic ");
+    it("should return the value of the property", () => {
+      const data = bgbe({ foo: "bar" });
+      expect(data.foo).toBe("bar");
+    });
+    it("exposes its key as __bgbe_proxy__", () => {
+      const data = bgbe({ foo: "bar" });
+      expect(data.__bgbe_proxy__).toBe("global");
+    });
+    it.todo("allows you to get inner functions");
   });
 
   // FIXME proxying should support this, idk why it doesn't?
@@ -92,6 +126,11 @@ describe("runtime behavior", () => {
       expect(data).toContain(4);
     });
     // etc
+  });
+
+  describe.for(both)("arrays - %s", ([_, fn]) => {
+    it.todo("supports sparse arrays");
+    it.todo("deletes in place");
   });
 
   describe("complex", () => {

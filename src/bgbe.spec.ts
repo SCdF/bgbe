@@ -84,16 +84,28 @@ describe("runtime behavior", () => {
     });
   });
 
-  describe.skip("complex", () => {
-    it("should support arrays", () => {
-      const arrays = bgbe([1, 2, 3]);
-      arrays.push(4);
-      arrays[0] = 5;
-      expectType<number[]>(arrays);
+  // FIXME proxying should support this, idk why it doesn't?
+  describe.skip("proxied functions", () => {
+    it("should support pushing to an array", () => {
+      const data = bgbe([1, 2, 3]);
+      data.push(4);
+      expect(data).toContain(4);
+    });
+    // etc
+  });
+
+  describe("complex", () => {
+    it("should support nested objects", () => {
+      const obj = bgbe({ foo: { bar: "baz" } });
+      expect(obj.foo.bar).toBe("baz");
+    });
+
+    it("should support nested arrays", () => {
+      const array = bgbe([1, [2, 3], 4]);
+      expect(array[1][0]).toBe(2);
     });
 
     it("should support arrays within objects", () => {
-      type MyArrayData = { data: number[] };
       const arrays2 = bgbe({ data: [0, 1, 2, 3] });
       arrays2.data.push(4);
       expectType<number[]>(arrays2.data);

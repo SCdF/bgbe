@@ -61,7 +61,11 @@ export function resetState() {
   bgbeMap = new Map<string, ProxiedComposite>();
 }
 
-function wrap(objKey: string, prop: ObjectKey, value: any) {
+function wrap(
+  objKey: string,
+  prop: ObjectKey,
+  value: Immutable | ProxyableComposite
+): Immutable | Symlink {
   if (isImmutable(value)) {
     return value;
   }
@@ -160,27 +164,20 @@ export default function bgbe<T extends ProxyableComposite = ProxyableComposite>(
   let toReturn: T & ProxiedComposite;
 
   if (Array.isArray(obj)) {
-    const proxiedArray = ydoc.getArray<T>(objKey);
+    const yarray = ydoc.getArray(objKey);
+    yarray.push(obj.map((value, idx) => wrap(objKey, idx, value)));
 
-    toReturn = new Proxy(
-      proxiedArray,
-      createHandler(objKey, proxiedArray)
-    ) as T & ProxiedComposite;
-
-    for (let i = 0; i < obj.length; i++) {
-      toReturn[i] = wrap(objKey, i, obj[i]);
-    }
+    toReturn = new Proxy(obj, createHandler(objKey, yarray)) as T &
+      ProxiedComposite;
   } else {
-    const proxiedObject = ydoc.getMap<T>(objKey);
+    const ymap = ydoc.getMap(objKey);
 
-    toReturn = new Proxy(
-      proxiedObject,
-      createHandler(objKey, proxiedObject)
-    ) as T & ProxiedComposite;
+    toReturn = new Proxy(obj, createHandler(objKey, ymap)) as T &
+      ProxiedComposite;
 
     for (const key in obj) {
       if (Object.prototype.hasOwnProperty.call(obj, key)) {
-        toReturn[key] = wrap(objKey, key, obj[key]);
+        ymap.set(key, wrap(objKey, key, obj[key]));
       }
     }
   }

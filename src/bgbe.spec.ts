@@ -122,17 +122,8 @@ describe("runtime behavior", () => {
 
       const data = bgbe({} as Fooer);
       data.foo = bgbe("different-thing", {} as Baaer);
-      // FIXME: doesn't work because we're passing a
-      // differnet name to the symlink generator
       data.foo.bar = "smang";
       expect(data.foo.bar).toBe("smang");
-    });
-
-    it("should support arrays within objects", () => {
-      type MyArrayData = { data: number[] };
-      const arrays2 = bgbe({ data: [0, 1, 2, 3] });
-      arrays2.data.push(4);
-      expect(arrays2.data).toContain(4);
     });
 
     it("should support arrays", () => {
@@ -147,6 +138,12 @@ describe("runtime behavior", () => {
         { objKey: "global", prop: "3", value: 4 },
         { objKey: "global", prop: "0", value: 5 },
       ]);
+    });
+
+    it("should support arrays within objects", () => {
+      const arrays2 = bgbe({ data: [0, 1, 2, 3] });
+      arrays2.data.push(4);
+      expect(arrays2.data).toContain(4);
     });
 
     it("should log every value that gets set", () => {
@@ -167,9 +164,17 @@ describe("runtime behavior", () => {
       data.bar[0] = "smang";
       data.bar.push("smong");
       expect(bgbeEventLog).toEqual([
-        { objKey: "global", prop: "foo", value: expect.any(Object) },
+        {
+          objKey: "global",
+          prop: "foo",
+          value: { docKey: "global.foo", symlink: true },
+        },
         { objKey: "global.foo", prop: "bar", value: "smang" },
-        { objKey: "global", prop: "bar", value: expect.any(Array) },
+        {
+          objKey: "global",
+          prop: "bar",
+          value: { docKey: "global.bar", symlink: true },
+        },
         { objKey: "global.bar", prop: "0", value: "smang" },
         { objKey: "global.bar", prop: "1", value: "smong" },
       ]);

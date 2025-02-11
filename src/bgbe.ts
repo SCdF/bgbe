@@ -125,10 +125,6 @@ function createHandler(objKey: string, inner: Y.Array<any> | Y.Map<any>) {
         return bgbeMap.get(innerVal.docKey);
       }
 
-      if (!innerVal) {
-        return target[prop];
-      }
-
       return innerVal;
     },
     set(target, prop, value): boolean {

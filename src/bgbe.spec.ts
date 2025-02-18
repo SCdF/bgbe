@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { expectType } from "tsd";
+import { expectError, expectType } from "tsd";
 
 import bgbe, {
   bgbeEventLog,
@@ -7,16 +7,23 @@ import bgbe, {
   isImmutable,
   isObjectKey,
   isProxyableComposite,
-  resetBgbeEventLog,
+  resetState,
+  ProxyableComposite,
 } from "./bgbe";
 
 beforeEach(() => {
-  resetBgbeEventLog();
+  resetState();
 });
 
-// TypeScript compilation tests
-describe("TypeScript Compilation Tests", () => {
-  it("should allow setting valid types", () => {
+type IdentityFn = <T extends ProxyableComposite>(x: T) => T;
+const identity: IdentityFn = <T>(x: T) => x;
+const both: [string, IdentityFn][] = [
+  ["original", identity],
+  ["bgbe", bgbe],
+];
+
+describe("TypeScript compilation", () => {
+  it("should allow setting valid ", () => {
     const data = bgbe<{ foo?: string }>({});
     data.foo = "bar";
     expectType<string>(data.foo);
@@ -24,7 +31,7 @@ describe("TypeScript Compilation Tests", () => {
 
   it("should allow nested proxies", () => {
     const data = bgbe<{ foo?: any }>({});
-    data.foo = bgbe<{ bar?: string }>({});
+    data.foo = bgbe<{ bar?: string }>("inner", {});
     data.foo.bar = "smang";
     expectType<string>(data.foo.bar);
   });
@@ -38,149 +45,233 @@ describe("TypeScript Compilation Tests", () => {
     });
   });
 
-  it(`should fail setting unsupported values`, () => {
-    const data = bgbe({});
+  it("should fail at generic level for unsupported types, even when not passed", () => {
+    // @ts-expect-error
+    const bar = bgbe<{ date?: Date }>("bar", {});
+
+    // @ts-expect-error
+    const bar2 = bgbe<{ foo: { date?: Date } }>("bar2", { foo: {} });
+  });
+
+  it(`shouldn't lose passed type information`, () => {
+    const data = bgbe("data", {});
     try {
-      // @ts-expect-error
-      data.foo = new Date();
+      // @ts-expect-error data is type {}
+      data.foo = "bar";
     } catch (err) {}
-  });
 
-  it(`should fail setting unsupported values, recursively`, () => {
-    const data = bgbe({ foo: { bar: "ok" } });
-    try {
-      // @ts-expect-error
-      data.foo.bar = new Date();
-    } catch (err) {}
-  });
-
-  it("should support arrays", () => {
-    const arrays = bgbe([1, 2, 3]);
-    arrays.push(4);
-    arrays[0] = 5;
-    expectType<number[]>(arrays);
-  });
-
-  it("should support arrays within objects", () => {
-    type MyArrayData = { data: number[] };
-    const arrays2 = bgbe({ data: [0, 1, 2, 3] });
-    arrays2.data.push(4);
-    expectType<number[]>(arrays2.data);
+    const data2 = bgbe<{ foo?: string }>("data2", {});
+    data2.foo = "bar"; // should work
   });
 });
 
-// Runtime behavior tests
-describe("Runtime Behavior Tests", () => {
-  it("should set and get properties correctly", () => {
-    const data = bgbe({}) as any;
-    data.foo = "bar";
-    data.foo = "baz";
-    expect(data.foo).toBe("baz");
+describe("runtime behavior", () => {
+  describe("identification", () => {
+    it("should create a proxied object", () => {
+      const obj = bgbe({});
+      expect(isProxiedComposite(obj)).toBe(true);
+    });
+    it("should create a proxied array", () => {
+      const array = bgbe([]);
+      expect(isProxiedComposite(array)).toBe(true);
+    });
   });
 
-  it("should handle nested proxies correctly", () => {
-    const data = bgbe({}) as any;
-    data.foo = bgbe({});
-    data.foo.bar = "smang";
-    expect(data.foo.bar).toBe("smang");
+  describe.for(both)("basic cruds - %s", ([_, fn]) => {
+    it("should get an original item", () => {
+      const obj = fn({ foo: "foo" });
+      expect(obj.foo).toBe("foo");
+    });
+    it("should set item", () => {
+      const data = fn({ foo: "foo" });
+      data.foo = "bar";
+      expect(data.foo).toBe("bar");
+    });
+    it.todo("delete a property on a proxied object");
+
+    it("should get an original item", () => {
+      const array = fn([1, 2, 3]);
+      expect(array[0]).toBe(1);
+    });
+    it("should set item", () => {
+      const data = fn([1, 2, 3]);
+      data[0] = 4;
+      expect(data[0]).toBe(4);
+    });
+    it("delete an item", () => {
+      const data = fn([1, 2, 3]);
+      delete data[0];
+      expect(data[0]).toBe(undefined);
+    });
   });
 
-  it("should identify proxied objects", () => {
-    const data = bgbe({});
-    expect(isProxiedComposite(data)).toBe(true);
+  describe("get", () => {
+    it.todo("should get basic ");
+    it("should return the value of the property", () => {
+      const data = bgbe({ foo: "bar" });
+      expect(data.foo).toBe("bar");
+    });
+    it("exposes its key as __bgbe_proxy__", () => {
+      const data = bgbe({ foo: "bar" });
+      expect(data.__bgbe_proxy__).toBe("global");
+    });
+    it.todo("allows you to get inner functions");
   });
 
-  it("should support arrays within objects", () => {
-    type MyArrayData = { data: number[] };
-    const arrays2 = bgbe({ data: [0, 1, 2, 3] });
-    arrays2.data.push(4);
-    expect(arrays2.data).toContain(4);
+  // FIXME proxying should support this, idk why it doesn't?
+  describe("proxied functions", () => {
+    it("should support pushing to an array", () => {
+      const data = bgbe([1, 2, 3]);
+      data.push(4);
+      expect(data).toContain(4);
+    });
+    // etc
   });
 
-  it("should support arrays", () => {
-    const arrays = bgbe([1, 2, 3]);
-    arrays.push(4);
-    expect(arrays).toContain(4);
-
-    arrays[0] = 5;
-    expect(arrays[0]).toBe(5);
-
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "3", value: 4 },
-      { objKey: "global", prop: "0", value: 5 },
-    ]);
+  describe.for(both)("arrays - %s", ([_, fn]) => {
+    it("supports sparse arrays", () => {
+      const data = fn([0]);
+      data[2] = 4;
+      expect(data[0]).toBe(0);
+      expect(data[1]).toBe(undefined);
+      expect(data[2]).toBe(4);
+      expect(data).toHaveLength(3);
+      expect(data).toEqual([0, undefined, 4]);
+    });
+    it.todo("deletes in place");
   });
 
-  it("should log every value that gets set", () => {
-    const data = bgbe({}) as any;
-    data.foo = "bar";
-    data.foo = "baz";
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "foo", value: "bar" },
-      { objKey: "global", prop: "foo", value: "baz" },
-    ]);
-  });
+  describe("complex", () => {
+    it("should support nested objects", () => {
+      const obj = bgbe({ foo: { bar: "baz" } });
+      expect(obj.foo.bar).toBe("baz");
+    });
 
-  it("should log nested proxy values", () => {
-    const data = bgbe({}) as any;
-    data.foo = {};
-    data.foo.bar = "smang";
-    data.bar = [];
-    data.bar[0] = "smang";
-    data.bar.push("smong");
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "foo", value: expect.any(Object) },
-      { objKey: "global.foo", prop: "bar", value: "smang" },
-      { objKey: "global", prop: "bar", value: expect.any(Array) },
-      { objKey: "global.bar", prop: "0", value: "smang" },
-      { objKey: "global.bar", prop: "1", value: "smong" },
-    ]);
-  });
+    it("should support nested arrays", () => {
+      const array = bgbe([1, [2, 3], 4]);
+      expect(array[1][0]).toBe(2);
+    });
 
-  it("should runtime protect against setting unsupported values", () => {
-    const data = bgbe({}) as any;
-    expect(() => {
-      data.foo = new Date();
-    }).toThrowError();
-  });
+    it("should support arrays within objects", () => {
+      const arrays2 = bgbe({ data: [0, 1, 2, 3] });
+      arrays2.data.push(4);
+      expectType<number[]>(arrays2.data);
+    });
 
-  it('should support setting "null" as a value', () => {
-    const data = bgbe({}) as any;
-    data.foo = null;
-    expect(data.foo).toBe(null);
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "foo", value: null },
-    ]);
-  });
+    it("should throw if you link to the same bgbe multiple times", () => {
+      const data = bgbe({}) as any;
+      expect(() => (data.foo = bgbe({}))).toThrowError();
+    });
 
-  it("should support setting undefined as a value", () => {
-    const data = bgbe({}) as any;
-    data.foo = undefined;
-    expect(data.foo).toBe(undefined);
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "foo", value: undefined },
-    ]);
-  });
+    it("should handle nested proxies correctly", () => {
+      type Baaer = { bar?: string };
+      type Fooer = { foo?: Baaer };
 
-  it("should support deleting a property", () => {
-    const data = bgbe({ foo: "bar" }) as any;
-    delete data.foo;
-    expect(data.foo).toBe(undefined);
-    expect(bgbeEventLog).toEqual([
-      { objKey: "global", prop: "foo", value: undefined },
-    ]);
-  });
+      const data = bgbe({} as Fooer);
+      data.foo = bgbe("different-thing", {} as Baaer);
+      data.foo.bar = "smang";
+      expect(data.foo.bar).toBe("smang");
+    });
 
-  it("should support passing a specific key", () => {
-    const data = bgbe("myKey", { foo: "bar" }) as any;
-    data.foo = "baz";
-    data.bar = {};
-    data.bar.baz = "smang";
-    expect(bgbeEventLog).toEqual([
-      { objKey: "myKey", prop: "foo", value: "baz" },
-      { objKey: "myKey", prop: "bar", value: expect.any(Object) },
-      { objKey: "myKey.bar", prop: "baz", value: "smang" },
-    ]);
+    it("should support arrays", () => {
+      const arrays = bgbe([1, 2, 3]);
+      arrays.push(4);
+      expect(arrays).toContain(4);
+
+      arrays[0] = 5;
+      expect(arrays[0]).toBe(5);
+
+      expect(bgbeEventLog).toEqual([
+        { objKey: "global", prop: "3", value: 4 },
+        { objKey: "global", prop: "0", value: 5 },
+      ]);
+    });
+
+    it("should support arrays within objects", () => {
+      const arrays2 = bgbe({ data: [0, 1, 2, 3] });
+      arrays2.data.push(4);
+      expect(arrays2.data).toContain(4);
+    });
+
+    it("should log every value that gets set", () => {
+      const data = bgbe({}) as any;
+      data.foo = "bar";
+      data.foo = "baz";
+      expect(bgbeEventLog).toEqual([
+        { objKey: "global", prop: "foo", value: "bar" },
+        { objKey: "global", prop: "foo", value: "baz" },
+      ]);
+    });
+
+    it("should log nested proxy values", () => {
+      const data = bgbe({}) as any;
+      data.foo = {};
+      data.foo.bar = "smang";
+      data.bar = [];
+      data.bar[0] = "smang";
+      data.bar.push("smong");
+      expect(bgbeEventLog).toEqual([
+        {
+          objKey: "global",
+          prop: "foo",
+          value: { docKey: "global.foo", symlink: true },
+        },
+        { objKey: "global.foo", prop: "bar", value: "smang" },
+        {
+          objKey: "global",
+          prop: "bar",
+          value: { docKey: "global.bar", symlink: true },
+        },
+        { objKey: "global.bar", prop: "0", value: "smang" },
+        { objKey: "global.bar", prop: "1", value: "smong" },
+      ]);
+    });
+
+    it("should runtime protect against setting unsupported values", () => {
+      const data = bgbe({}) as any;
+      expect(() => {
+        data.foo = new Date();
+      }).toThrowError();
+    });
+
+    it('should support setting "null" as a value', () => {
+      const data = bgbe({}) as any;
+      data.foo = null;
+      expect(data.foo).toBe(null);
+      expect(bgbeEventLog).toEqual([
+        { objKey: "global", prop: "foo", value: null },
+      ]);
+    });
+
+    it("should support setting undefined as a value", () => {
+      const data = bgbe({}) as any;
+      data.foo = undefined;
+      expect(data.foo).toBe(undefined);
+      expect(bgbeEventLog).toEqual([
+        { objKey: "global", prop: "foo", value: undefined },
+      ]);
+    });
+
+    it("should support deleting a property", () => {
+      const data = bgbe({ foo: "bar" }) as any;
+      delete data.foo;
+      expect(data.foo).toBe(undefined);
+      expect(bgbeEventLog).toEqual([
+        { objKey: "global", prop: "foo", value: undefined },
+      ]);
+    });
+
+    it("should support passing a specific key", () => {
+      const data = bgbe("myKey", { foo: "bar" }) as any;
+      data.foo = "baz";
+      data.bar = {};
+      data.bar.baz = "smang";
+      expect(bgbeEventLog).toEqual([
+        { objKey: "myKey", prop: "foo", value: "baz" },
+        { objKey: "myKey", prop: "bar", value: expect.any(Object) },
+        { objKey: "myKey.bar", prop: "baz", value: "smang" },
+      ]);
+    });
   });
 });
 
@@ -240,7 +331,7 @@ describe("runtime type checking", () => {
   });
 });
 
-describe("bgbe wrap functionality", () => {
+describe("bgbe wrap", () => {
   it("should wrap nested arrays", () => {
     const data = bgbe({ array: [0, 1, 2] });
     expect(isProxiedComposite(data.array)).toBe(true);

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { expectType } from "tsd";
+import { expectError, expectType } from "tsd";
 
 import bgbe, {
   bgbeEventLog,
@@ -129,7 +129,15 @@ describe("runtime behavior", () => {
   });
 
   describe.for(both)("arrays - %s", ([_, fn]) => {
-    it.todo("supports sparse arrays");
+    it("supports sparse arrays", () => {
+      const data = fn([0]);
+      data[2] = 4;
+      expect(data[0]).toBe(0);
+      expect(data[1]).toBe(undefined);
+      expect(data[2]).toBe(4);
+      expect(data).toHaveLength(3);
+      expect(data).toEqual([0, undefined, 4]);
+    });
     it.todo("deletes in place");
   });
 

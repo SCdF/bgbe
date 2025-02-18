@@ -94,6 +94,9 @@ function createHandler(
   inner: Y.Map<any>,
   type: "array" | "object"
 ) {
+  // To support sparse arrays (to support JS compatabilty) we need to
+  // allow this to be set and not derived (see set and get below)
+  let arrayLength = 0;
   return {
     get(target, prop) {
       // TODO: do we want to pass through the iterator and get
@@ -106,18 +109,20 @@ function createHandler(
       }
 
       // Trying to access prototype stuff, eg Iterator
+      // Users don't do this really, other tooling does
       if (typeof prop === "symbol") {
-        return target[prop];
+        return inner[prop];
       }
 
       // Trying to access functions
+      //
       if (typeof target[prop] === "function") {
         return target[prop];
       }
 
       // Array length
       if (type === "array" && prop === "length") {
-        return inner.size;
+        return arrayLength;
       }
 
       // Get data from Yjs
@@ -140,11 +145,13 @@ function createHandler(
       // Trying to access prototype stuff, eg Iterator
       if (typeof prop === "symbol") {
         target[prop] = value;
+        return true;
       }
 
       // Trying to access functions
       if (typeof target[prop] === "function") {
         target[prop] = value;
+        return true;
       }
 
       if (!isProxyableComposite(value)) {
@@ -154,7 +161,11 @@ function createHandler(
       const wrappedValue = wrap(objKey, prop, value);
       inner.set(prop, wrappedValue);
 
-      if (!Array.isArray(target) || !isNaN(Number(prop))) {
+      if (type === "array") {
+        arrayLength = Math.max(arrayLength, Number(prop) + 1);
+      }
+
+      if (type === "object" || !isNaN(Number(prop))) {
         bgbeEventLog.push({ objKey, prop, value: wrappedValue });
       }
 
